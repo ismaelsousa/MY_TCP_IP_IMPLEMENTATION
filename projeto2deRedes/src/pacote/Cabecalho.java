@@ -9,8 +9,9 @@ package pacote;
  *
  * @author ismae
  */
-public class Pacote {
-    Cabecalho cab;
-    byte payload[];
-    
+public class Cabecalho {
+    int sequenceNumber;
+    int ackNumber;
+    int connectionID;
+    String notused;             
 }

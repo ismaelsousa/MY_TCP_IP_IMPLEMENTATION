@@ -17,8 +17,7 @@ import java.util.logging.Logger;
 public class Server {
     DatagramSocket servidor;
     public Server(int porta, String caminho) {
-        try {
-            
+        try {           
             servidor = new DatagramSocket(porta);
         } catch (SocketException ex) {
             System.out.println("Erro ao tentar criar o servidor na porta "+ porta);
