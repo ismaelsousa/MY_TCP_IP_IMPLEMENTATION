@@ -5,12 +5,33 @@
  */
 package pacote;
 
+import java.io.Serializable;
+
 /**
  *
  * @author ismae
  */
-public class Pacote {
-    Cabecalho cab;
-    byte payload[];
+public class Pacote implements Serializable{
+    private Cabecalho cabecalho = new Cabecalho();
+    private byte payload[];
+
+    public Cabecalho getCabecalho() {
+        return cabecalho;
+    }
+
+    public void setCabecalho(Cabecalho cabecalho) {
+        this.cabecalho = cabecalho;
+    }
+
+    
+
+    public byte[] getPayload() {
+        return payload;
+    }
+
+    public void setPayload(byte[] payload) {
+        this.payload = payload;
+    }
+    
     
 }
