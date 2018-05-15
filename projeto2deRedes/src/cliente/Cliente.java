@@ -74,21 +74,68 @@ public class Cliente {
     }
 
     public static void main(String[] args) throws IOException {
+        int id;
+        int numSequencia = 12345;
         //criando a propria instancia da classe cliente        
         Cliente c = new Cliente("localhost", 5556, "assd");
-        
+        System.out.println("criei o datagram socket");
         //vou começar enviando um pacote com o numero de sequencia, ack = 0, id=0 e SYN ativo
-        Pacote syn = new Pacote();
-        syn.getCabecalho().setNotused("SYN");
-        byte envio[] = converterPacoteEmByte(syn);
+        Pacote pacoteDeSicro = new Pacote();
+        pacoteDeSicro.setSyn(true);
+        pacoteDeSicro.setSequenceNumber(numSequencia++);
+
+        byte envio[] = converterPacoteEmByte(pacoteDeSicro);
         //pega o ip
+        System.out.println("converti o pacote ppara bytes");
         InetAddress IPAddress = InetAddress.getByName("localhost");
         //criar o datagram para enviar para o servidor
         DatagramPacket pkt = new DatagramPacket(envio, envio.length, IPAddress, 5555);
-        
         c.clienteUDP.send(pkt);
+        System.out.println("enviei o pacote ");
         
-       
+        ///////////////////////esperar o retorno 
+        byte dataReceive[] = new byte[661];
+        DatagramPacket receive = new DatagramPacket(dataReceive, dataReceive.length);
+        
+        System.out.println("esperando o pacote novo");        
+        c.clienteUDP.receive(receive);
+        
+        Pacote confirmacao = converterByteParaPacote(dataReceive);
+        System.out.println("pacote deu certo veio o syn:"+confirmacao.isSyn()+" veio o ack:"+confirmacao.isAck()+" numero de sequencia:"+confirmacao.getSequenceNumber());
+        id=confirmacao.getConnectionID();
+        
+        ////////////////////////////// envia o ack de confirmação
+        Pacote ackDeSyn = new Pacote();
+        ackDeSyn.setAck(true);
+        ackDeSyn.setSequenceNumber(numSequencia);
+        ackDeSyn.setAckNumber(confirmacao.getSequenceNumber()+1);
+        ackDeSyn.setConnectionID(id);
+        
+        byte ack[] = converterPacoteEmByte(ackDeSyn);
+        
+        DatagramPacket Dack = new DatagramPacket(ack, ack.length, IPAddress, 5555);
+        c.clienteUDP.send(Dack);
+        
+        
+    }
+
+    private static Pacote converterByteParaPacote(byte[] pacote) {
+
+        try {
+            ByteArrayInputStream bao = new ByteArrayInputStream(pacote);
+            ObjectInputStream ous;
+            ous = new ObjectInputStream(bao);
+            return (Pacote) ous.readObject();
+
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        return null;
     }
 
     private static byte[] converterPacoteEmByte(Pacote pkt) {
