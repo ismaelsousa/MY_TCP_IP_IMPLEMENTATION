@@ -23,6 +23,7 @@ public class testeDeSerializar {
         p.setAckNumber(123);
         p.setSequenceNumber(321);
         byte pconver[] = converterPacoteEmByte(p);
+        System.out.println("agora o p tem:"+pconver.length);
         System.out.println(pconver.length);
         System.out.println("passei para bytes");
         Pacote n = converterByteParaPacote(pconver);

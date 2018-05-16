@@ -30,38 +30,6 @@ public class Cliente {
     String caminho;
     DatagramSocket clienteUDP;
 
-    public String getHostName() {
-        return hostName;
-    }
-
-    public void setHostName(String hostName) {
-        this.hostName = hostName;
-    }
-
-    public int getPorta() {
-        return porta;
-    }
-
-    public void setPorta(int porta) {
-        this.porta = porta;
-    }
-
-    public String getCaminho() {
-        return caminho;
-    }
-
-    public void setCaminho(String caminho) {
-        this.caminho = caminho;
-    }
-
-    public DatagramSocket getClienteUDP() {
-        return clienteUDP;
-    }
-
-    public void setClienteUDP(DatagramSocket clienteUDP) {
-        this.clienteUDP = clienteUDP;
-    }
-
     public Cliente(String hostName, int porta, String caminho) {
         this.hostName = hostName;
         this.porta = porta;
@@ -76,9 +44,9 @@ public class Cliente {
     public static void main(String[] args) throws IOException {
         int id;
         int numSequencia = 12345;
+        int portaDoServidor;
         //criando a propria instancia da classe cliente        
         Cliente c = new Cliente("localhost", 5556, "assd");
-
         //vou começar enviando um pacote com o numero de sequencia, ack = 0, id=0 e SYN ativo
         Pacote pacoteDeSicro = new Pacote();
         pacoteDeSicro.setSyn(true);
@@ -93,13 +61,17 @@ public class Cliente {
         c.clienteUDP.send(pkt);
 
         ///////////////////////esperar o retorno 
-        byte dataReceive[] = new byte[661];
+        byte dataReceive[] = new byte[675];
         DatagramPacket receive = new DatagramPacket(dataReceive, dataReceive.length);
         c.clienteUDP.receive(receive);
         Pacote confirmacao = converterByteParaPacote(dataReceive);
+
+        //passo o numerro da porta que irei usar para enviar o arq
+        portaDoServidor = confirmacao.getNotUsed();
         id = confirmacao.getConnectionID();
-        System.out.println("seq:" + confirmacao.getSequenceNumber() + " ack:" + confirmacao.getAckNumber() + " id:" + confirmacao.getConnectionID() + " ack:" + confirmacao.isAck()+" syn:"+confirmacao.isSyn());
+        System.out.println("seq:" + confirmacao.getSequenceNumber() + " ack:" + confirmacao.getAckNumber() + " id:" + confirmacao.getConnectionID() + " ack:" + confirmacao.isAck() + " syn:" + confirmacao.isSyn());
         System.out.println("<-------------------------------------------");
+
         ////////////////////////////// envia o ack de confirmação
         Pacote ackDeSyn = new Pacote();
         ackDeSyn.setAck(true);
@@ -109,7 +81,7 @@ public class Cliente {
 
         byte ack[] = converterPacoteEmByte(ackDeSyn);
 
-        DatagramPacket Dack = new DatagramPacket(ack, ack.length, IPAddress, 5555);
+        DatagramPacket Dack = new DatagramPacket(ack, ack.length, IPAddress, portaDoServidor);
         c.clienteUDP.send(Dack);
 
         System.out.println("seq:" + ackDeSyn.getSequenceNumber() + " ack:" + ackDeSyn.getAckNumber() + " id:" + ackDeSyn.getConnectionID() + " ack:" + ackDeSyn.isAck());
@@ -151,6 +123,38 @@ public class Cliente {
         }
 
         return null;
+    }
+
+    public String getHostName() {
+        return hostName;
+    }
+
+    public void setHostName(String hostName) {
+        this.hostName = hostName;
+    }
+
+    public int getPorta() {
+        return porta;
+    }
+
+    public void setPorta(int porta) {
+        this.porta = porta;
+    }
+
+    public String getCaminho() {
+        return caminho;
+    }
+
+    public void setCaminho(String caminho) {
+        this.caminho = caminho;
+    }
+
+    public DatagramSocket getClienteUDP() {
+        return clienteUDP;
+    }
+
+    public void setClienteUDP(DatagramSocket clienteUDP) {
+        this.clienteUDP = clienteUDP;
     }
 
 }

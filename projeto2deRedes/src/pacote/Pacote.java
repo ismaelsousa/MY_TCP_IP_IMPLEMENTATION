@@ -19,7 +19,17 @@ public class Pacote implements Serializable {
     private boolean ack;
     private boolean fyn;
     private boolean syn;
+    private int notUsed;
     private byte payload[]= new byte[512];
+
+    public int getNotUsed() {
+        return notUsed;
+    }
+
+    public void setNotUsed(int notUsed) {
+        this.notUsed = notUsed;
+    }
+    
   public Pacote() {
        
     }

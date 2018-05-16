@@ -5,6 +5,7 @@
  */
 package Servidor;
 
+import cliente.NoCliente;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -15,6 +16,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import pacote.Pacote;
@@ -26,11 +28,13 @@ import pacote.Pacote;
 public class Server {
 
     public static int idDosClientes = 0;
-
+    public static int portaUDPs;
     private DatagramSocket servidorUDP;
 
     public Server(int porta, String caminho) {
         try {
+            portaUDPs = porta;
+            System.out.println(portaUDPs);
             servidorUDP = new DatagramSocket(porta);
         } catch (SocketException ex) {
             System.out.println("Erro ao tentar criar o servidor na porta " + porta);
@@ -38,15 +42,18 @@ public class Server {
     }
 
     public static void main(String[] args) {
-
+        //criando a propria class
         Server server = new Server(5555, "");
         System.out.println("criei o servidor");
-        byte dataReceive[] = new byte[661];
+        //lista de threads 
+        ArrayList<ConexaoComCliente> threads = new ArrayList();
+        
+        byte dataReceive[] = new byte[675];
         DatagramPacket pkt = new DatagramPacket(dataReceive, dataReceive.length);
         System.out.println("criei o pacote que eu vou esperar");
         try {
             while (true) {
-                /////////////////////////////espera a conexap
+                /////////////////////////////espera a conexao
                 System.out.println("estou esperando conexao");
                 server.servidorUDP.receive(pkt);
                 System.out.println("a porta que chegou foi:" + pkt.getPort());
@@ -57,29 +64,10 @@ public class Server {
                 
                 /////////////////////se for um syn entao vamos estabelecer a conexao
                 if (p.isSyn()) {
-                    ////////////pacote com o id do cliente, synAck , numero de sequencia do serve, num do ack
-                    Pacote p1 = new Pacote();
-                    p1.setConnectionID(++idDosClientes);
-                    p1.setSyn(true);
-                    p1.setAck(true);
-                    p1.setSequenceNumber(4321);
-                    p1.setAckNumber(p.getSequenceNumber() + 1);
-                    System.out.println("   seq:" + p1.getSequenceNumber() + " ack:" + p1.getAckNumber() + " id:" + p1.getConnectionID() + " syn | ack :" + p1.isSyn() + "|" + p1.isAck());
-                    System.out.println("------------------------------------------->");
-
-                    byte dataReceive2[] = converterPacoteEmByte(p1);
-                    DatagramPacket pkt2 = new DatagramPacket(dataReceive2, dataReceive2.length, pkt.getAddress(), pkt.getPort());
-                    server.servidorUDP.send(pkt2);
-
-                    //////esperar o ack do cliente 
-                    byte dataReceive3[] = new byte[661];
-                    DatagramPacket pkt3 = new DatagramPacket(dataReceive3, dataReceive3.length);
-                    server.servidorUDP.receive(pkt);
-
-                    Pacote pAckC = converterByteParaPacote(dataReceive);
-                    System.out.println("   seq=" + pAckC.getSequenceNumber() + " ack:" + pAckC.getAckNumber() + " id:" + pAckC.getConnectionID() + " é ack:" + pAckC.isAck());
-                    System.out.println("<-------------------------------------------");
-
+                  NoCliente novo = new NoCliente(++idDosClientes, pkt.getPort(), pkt.getAddress(), p.getSequenceNumber());
+                  ConexaoComCliente thread = new ConexaoComCliente(novo);
+                  thread.start();
+                
                 }else{
                     ///////vou repassar o pacote para a thread com identificador semelhannte 
                     
