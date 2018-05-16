@@ -78,45 +78,42 @@ public class Cliente {
         int numSequencia = 12345;
         //criando a propria instancia da classe cliente        
         Cliente c = new Cliente("localhost", 5556, "assd");
-        System.out.println("criei o datagram socket");
+
         //vou começar enviando um pacote com o numero de sequencia, ack = 0, id=0 e SYN ativo
         Pacote pacoteDeSicro = new Pacote();
         pacoteDeSicro.setSyn(true);
         pacoteDeSicro.setSequenceNumber(numSequencia++);
-
+        System.out.println("seq:" + pacoteDeSicro.getSequenceNumber() + " ack:" + pacoteDeSicro.getAckNumber() + " id:" + pacoteDeSicro.getConnectionID() + " syn:" + pacoteDeSicro.isSyn());
+        System.out.println("------------------------------------------->");
         byte envio[] = converterPacoteEmByte(pacoteDeSicro);
-        //pega o ip
-        System.out.println("converti o pacote ppara bytes");
+        //pega o ip      
         InetAddress IPAddress = InetAddress.getByName("localhost");
         //criar o datagram para enviar para o servidor
         DatagramPacket pkt = new DatagramPacket(envio, envio.length, IPAddress, 5555);
         c.clienteUDP.send(pkt);
-        System.out.println("enviei o pacote ");
-        
+
         ///////////////////////esperar o retorno 
         byte dataReceive[] = new byte[661];
         DatagramPacket receive = new DatagramPacket(dataReceive, dataReceive.length);
-        
-        System.out.println("esperando o pacote novo");        
         c.clienteUDP.receive(receive);
-        
         Pacote confirmacao = converterByteParaPacote(dataReceive);
-        System.out.println("pacote deu certo veio o syn:"+confirmacao.isSyn()+" veio o ack:"+confirmacao.isAck()+" numero de sequencia:"+confirmacao.getSequenceNumber());
-        id=confirmacao.getConnectionID();
-        
+        id = confirmacao.getConnectionID();
+        System.out.println("seq:" + confirmacao.getSequenceNumber() + " ack:" + confirmacao.getAckNumber() + " id:" + confirmacao.getConnectionID() + " ack:" + confirmacao.isAck()+" syn:"+confirmacao.isSyn());
+        System.out.println("<-------------------------------------------");
         ////////////////////////////// envia o ack de confirmação
         Pacote ackDeSyn = new Pacote();
         ackDeSyn.setAck(true);
         ackDeSyn.setSequenceNumber(numSequencia);
-        ackDeSyn.setAckNumber(confirmacao.getSequenceNumber()+1);
+        ackDeSyn.setAckNumber(confirmacao.getSequenceNumber() + 1);
         ackDeSyn.setConnectionID(id);
-        
+
         byte ack[] = converterPacoteEmByte(ackDeSyn);
-        
+
         DatagramPacket Dack = new DatagramPacket(ack, ack.length, IPAddress, 5555);
         c.clienteUDP.send(Dack);
-        
-        
+
+        System.out.println("seq:" + ackDeSyn.getSequenceNumber() + " ack:" + ackDeSyn.getAckNumber() + " id:" + ackDeSyn.getConnectionID() + " ack:" + ackDeSyn.isAck());
+        System.out.println("------------------------------------------->");
     }
 
     private static Pacote converterByteParaPacote(byte[] pacote) {

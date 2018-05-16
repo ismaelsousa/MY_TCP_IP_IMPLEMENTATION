@@ -45,39 +45,46 @@ public class Server {
         DatagramPacket pkt = new DatagramPacket(dataReceive, dataReceive.length);
         System.out.println("criei o pacote que eu vou esperar");
         try {
-            /////////////////////////////espera a conexap
-            System.out.println("estou esperando conexao");
-            server.servidorUDP.receive(pkt);
-            System.out.println("a porta que chegou foi:" + pkt.getPort());
-            System.out.println("chegou vou converter");
-            Pacote p = converterByteParaPacote(pkt.getData());
-            System.out.println("   seq:" + p.getSequenceNumber() + " Ack:" + p.getAckNumber() + " id:" + p.getConnectionID());
-            System.out.println("<-------------------------------------------");
-
-            if (p.isSyn()) {/////////////////////se for um syn entao vamos estabelecer a conexao
-                ////////////pacote com o id do cliente, synAck , numero de sequencia do serve, num do ack
-                Pacote p1 = new Pacote();
-                p1.setConnectionID(++idDosClientes);
-                p1.setSyn(true);
-                p1.setAck(true);
-                p1.setSequenceNumber(4321);
-                p1.setAckNumber(p.getSequenceNumber() + 1);
-                System.out.println("   seq:" + p1.getSequenceNumber() + " ack:" + p1.getAckNumber() + " id:" + p1.getConnectionID() + " syn | ack :" + p1.isSyn() + "|" + p1.isAck());
-                System.out.println("------------------------------------------->");
-
-                byte dataReceive2[] = converterPacoteEmByte(p1);
-                DatagramPacket pkt2 = new DatagramPacket(dataReceive2, dataReceive2.length, pkt.getAddress(), pkt.getPort());
-                server.servidorUDP.send(pkt2);
-
-                //////esperar o ack do cliente 
-                byte dataReceive3[] = new byte[661];
-                DatagramPacket pkt3 = new DatagramPacket(dataReceive3, dataReceive3.length);
+            while (true) {
+                /////////////////////////////espera a conexap
+                System.out.println("estou esperando conexao");
                 server.servidorUDP.receive(pkt);
-
-                Pacote pAckC = converterByteParaPacote(dataReceive);
-                System.out.println("   seq=" + pAckC.getSequenceNumber() + " ack:" + pAckC.getAckNumber() + " id:" + pAckC.getConnectionID() + " é ack:" + pAckC.isAck());
+                System.out.println("a porta que chegou foi:" + pkt.getPort());
+                System.out.println("chegou vou converter");
+                Pacote p = converterByteParaPacote(pkt.getData());
+                System.out.println("   seq:" + p.getSequenceNumber() + " Ack:" + p.getAckNumber() + " id:" + p.getConnectionID());
                 System.out.println("<-------------------------------------------");
+                
+                /////////////////////se for um syn entao vamos estabelecer a conexao
+                if (p.isSyn()) {
+                    ////////////pacote com o id do cliente, synAck , numero de sequencia do serve, num do ack
+                    Pacote p1 = new Pacote();
+                    p1.setConnectionID(++idDosClientes);
+                    p1.setSyn(true);
+                    p1.setAck(true);
+                    p1.setSequenceNumber(4321);
+                    p1.setAckNumber(p.getSequenceNumber() + 1);
+                    System.out.println("   seq:" + p1.getSequenceNumber() + " ack:" + p1.getAckNumber() + " id:" + p1.getConnectionID() + " syn | ack :" + p1.isSyn() + "|" + p1.isAck());
+                    System.out.println("------------------------------------------->");
 
+                    byte dataReceive2[] = converterPacoteEmByte(p1);
+                    DatagramPacket pkt2 = new DatagramPacket(dataReceive2, dataReceive2.length, pkt.getAddress(), pkt.getPort());
+                    server.servidorUDP.send(pkt2);
+
+                    //////esperar o ack do cliente 
+                    byte dataReceive3[] = new byte[661];
+                    DatagramPacket pkt3 = new DatagramPacket(dataReceive3, dataReceive3.length);
+                    server.servidorUDP.receive(pkt);
+
+                    Pacote pAckC = converterByteParaPacote(dataReceive);
+                    System.out.println("   seq=" + pAckC.getSequenceNumber() + " ack:" + pAckC.getAckNumber() + " id:" + pAckC.getConnectionID() + " é ack:" + pAckC.isAck());
+                    System.out.println("<-------------------------------------------");
+
+                }else{
+                    ///////vou repassar o pacote para a thread com identificador semelhannte 
+                    
+                }
+                
             }
         } catch (IOException ex) {
             System.out.println("erro ao receber o pacote");

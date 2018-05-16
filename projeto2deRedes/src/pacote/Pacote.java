@@ -20,6 +20,15 @@ public class Pacote implements Serializable {
     private boolean fyn;
     private boolean syn;
     private byte payload[]= new byte[512];
+  public Pacote() {
+       
+    }
+
+    public Pacote(boolean ack, boolean fyn, boolean syn) {
+        this.ack = ack;
+        this.fyn = fyn;
+        this.syn = syn;
+    }
 
     public int getSequenceNumber() {
         return sequenceNumber;
