@@ -5,8 +5,12 @@
  */
 package cliente;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -15,9 +19,12 @@ import java.net.DatagramSocket;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import pacote.Pacote;
+import java.io.*;
+import java.nio.file.Files;
 
 /**
  *
@@ -25,15 +32,18 @@ import pacote.Pacote;
  */
 public class Cliente {
 
-    String hostName;
-    int porta;
-    String caminho;
-    DatagramSocket clienteUDP;
+    private ArrayList<byte[]> pedacoDoArq = new ArrayList<>();
+    private String hostName;
+    private int porta;
+    private DatagramSocket clienteUDP;
+    private String caminho;
 
     public Cliente(String hostName, int porta, String caminho) {
         this.hostName = hostName;
         this.porta = porta;
         this.caminho = caminho;
+        quebrarArquivo();
+        CriarArquivo();
         try {
             clienteUDP = new DatagramSocket(porta);
         } catch (SocketException ex) {
@@ -46,7 +56,7 @@ public class Cliente {
         int numSequencia = 12345;
         int portaDoServidor;
         //criando a propria instancia da classe cliente        
-        Cliente c = new Cliente("localhost", 5556, "assd");
+        Cliente c = new Cliente("localhost", 5556, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\StitchesShawnMendes.mp4");
         //vou começar enviando um pacote com o numero de sequencia, ack = 0, id=0 e SYN ativo
         Pacote pacoteDeSicro = new Pacote();
         pacoteDeSicro.setSyn(true);
@@ -86,6 +96,67 @@ public class Cliente {
 
         System.out.println("seq:" + ackDeSyn.getSequenceNumber() + " ack:" + ackDeSyn.getAckNumber() + " id:" + ackDeSyn.getConnectionID() + " ack:" + ackDeSyn.isAck());
         System.out.println("------------------------------------------->");
+    }
+
+    public static void paraArquivo(byte dado[], File destino) {
+        try {
+            FileOutputStream fos = new FileOutputStream(destino);
+            fos.write(dado);
+            fos.close();
+        } catch (FileNotFoundException ex) {
+            System.out.println("erro ao cria o fileOutputStream");
+        } catch (IOException ex) {
+            System.out.println("erro ao escrever o arquivo");
+        }
+
+    }
+
+    public void CriarArquivo() {
+        File test = new File("teste.mp4");
+        
+        byte junto[] = new byte[pedacoDoArq.size()*512];
+        int i = 0;
+        int posicao= 0;
+        int posiDoPedaco=0;
+        
+        while (i < pedacoDoArq.size()) {
+            for (int j = 0; j < pedacoDoArq.get(i).length; j++) {
+                junto[posicao] = pedacoDoArq.get(i)[j];
+                posicao++;
+            }            
+            i++;                        
+        }
+        
+            try {
+                Files.write(test.toPath(), junto);
+                System.out.println("salvei o pedaco:"+ i );
+                i++;
+            } catch (IOException ex) {
+                System.out.println("erro ao tentar criar arquivo");
+            }
+        
+    }
+
+    public void quebrarArquivo() {
+        try {
+            FileInputStream in = new FileInputStream(new File(caminho));
+            BufferedInputStream bufferMusica = new BufferedInputStream(in);
+            int n = 0;
+            int i = 0;
+
+            while (n != -1) {
+                byte[] byteDoArquivo = new byte[512];
+                n = bufferMusica.read(byteDoArquivo);
+                pedacoDoArq.add(byteDoArquivo);
+                System.out.println("quebrei pedaço do arquivo:" + i);
+                i++;
+            }
+        } catch (FileNotFoundException ex) {
+            System.out.println("Erro ao pegar o arquivo" + ex);
+        } catch (IOException ex) {
+            System.out.println("Erro IO" + ex);
+        }
+
     }
 
     private static Pacote converterByteParaPacote(byte[] pacote) {
