@@ -65,11 +65,9 @@ public class Server {
                 /////////////////////se for um syn entao vamos estabelecer a conexao
                 if (p.isSyn()) {
                   NoCliente novo = new NoCliente(++idDosClientes, pkt.getPort(), pkt.getAddress(), p.getSequenceNumber());
-                  ConexaoComCliente thread = new ConexaoComCliente(novo);
-                  thread.start();
-                
+                  ConexaoComCliente thread = new ConexaoComCliente(novo);                                  
                 }else{
-                    ///////vou repassar o pacote para a thread com identificador semelhannte 
+                   
                     
                 }
                 

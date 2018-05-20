@@ -16,7 +16,7 @@ public class NoCliente {
     private int id;
     private int porta;
     private InetAddress IPAddress;
-    private int numSecInicial;
+    private int numSecCliente;
 
     public int getId() {
         return id;
@@ -42,19 +42,21 @@ public class NoCliente {
         this.IPAddress = IPAddress;
     }
 
-    public int getNumSecInicial() {
-        return numSecInicial;
+    public int getNumSecCliente() {
+        return numSecCliente;
     }
 
-    public void setNumSecInicial(int numSecInicial) {
-        this.numSecInicial = numSecInicial;
+    public void setNumSecCliente(int numSecCliente) {
+        this.numSecCliente = numSecCliente;
     }
+
+    
 
     public NoCliente(int id, int porta, InetAddress IPAddress, int num) {
         this.id = id;
         this.porta = porta;
         this.IPAddress = IPAddress;
-        this.numSecInicial = num;
+        this.numSecCliente = num;
     }
 
 }
