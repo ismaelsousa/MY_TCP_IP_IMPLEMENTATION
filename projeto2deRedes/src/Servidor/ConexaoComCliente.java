@@ -6,6 +6,7 @@
 package Servidor;
 
 import static Servidor.Server.idDosClientes;
+import cliente.Cliente;
 import cliente.NoCliente;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -62,21 +63,60 @@ public class ConexaoComCliente extends Thread {
         Pacote p = new Pacote(true, false, false);
         p.setConnectionID(id);
         p.setSequenceNumber(meuNumSeq);
-        meuNumSeq += 675;        
+        meuNumSeq += Cliente.tamanhoDeUmPacote;
         //mando o pacote pedindo os dados
-        p.setAckNumber(noCliente.getNumSecCliente() + 675);
+        p.setAckNumber(noCliente.getNumSecCliente() + Cliente.tamanhoDeUmPacote);
         //atualizo qual eu vou esperar receber
-        noCliente.setNumSecCliente(noCliente.getNumSecCliente() + 675);
+        noCliente.setNumSecCliente(noCliente.getNumSecCliente() + Cliente.tamanhoDeUmPacote);
 
-        byte dataReceive2[] = converterPacoteEmByte(p);
-        DatagramPacket pkt2 = new DatagramPacket(dataReceive2, dataReceive2.length, noCliente.getIPAddress(), noCliente.getPorta());
+        EnviarPacoteCliente(p);
+        Pacote ack;
+        while (true) {
+            Pacote dado = EsperaPacote();
+            //aqui eu terei que fazer um while que vai receber varios pacotes direto 
+            //para cada pacote eu irei criar um ack 
+
+            System.out.println("estou esperando :" + noCliente.getNumSecCliente() + "\n chegou: " + dado.getSequenceNumber());
+            if (noCliente.getNumSecCliente() == dado.getSequenceNumber()) {
+                //add no arryalist os dados que vao ser convertidos
+                pedacoDoArq.add(dado.getPayload());
+
+                //atualizo qual eu vou esperar receber
+                noCliente.setNumSecCliente(noCliente.getNumSecCliente() + Cliente.tamanhoDeUmPacote);
+
+                p =ack = new Pacote(true, false, false);
+                ack.setSequenceNumber((meuNumSeq += Cliente.tamanhoDeUmPacote));
+                ack.setAckNumber(noCliente.getNumSecCliente());
+                EnviarPacoteCliente(p);
+                System.out.println("recebi vamos para outro");
+
+            } else if(p != null){
+                EnviarPacoteCliente(p);
+                System.out.println("enviei o ack repetido: "+p.getAckNumber());
+            }
+        }
+    }
+
+    public Pacote EsperaPacote() {
+        byte dataReceive3[] = new byte[Cliente.tamanhoDeUmPacote];
+        DatagramPacket pkt3 = new DatagramPacket(dataReceive3, dataReceive3.length);
         try {
-            datagram.send(pkt2);
+            datagram.receive(pkt3);
         } catch (IOException ex) {
             System.out.println("erro ao tentar enviar o pacote ao cliente:" + noCliente.getId());
         }
-        ////aqui eu terei que fazer um while que vai receber varios pacotes direto 
-        //para cada pacote eu irei criar um ack 
+
+        return converterByteParaPacote(dataReceive3);
+    }
+
+    public void EnviarPacoteCliente(Pacote p) {
+        byte byteDoAck[] = Pacote.converterPacoteEmByte(p);
+
+        try {
+            datagram.send(new DatagramPacket(byteDoAck, byteDoAck.length, noCliente.getIPAddress(), noCliente.getPorta()));
+        } catch (IOException ex) {
+            System.out.println("erro ao tentar enviar o pacote ao cliente:" + noCliente.getId());
+        }
     }
 
     public void handShake() {
@@ -101,7 +141,7 @@ public class ConexaoComCliente extends Thread {
         meuNumSeq++;
 
         //estou usando os bits notUsed para informar a porta que ele deve mandar os pacotes de dados        
-        p1.setNotUsed(portaUDP);
+       
         System.out.println("   seq:" + p1.getSequenceNumber() + " ack:" + p1.getAckNumber() + " id:" + p1.getConnectionID() + " syn | ack :" + p1.isSyn() + "|" + p1.isAck());
         System.out.println("------------------------------------------->");
 
@@ -114,7 +154,7 @@ public class ConexaoComCliente extends Thread {
         }
 
         //////esperar o ack do cliente 
-        byte dataReceive3[] = new byte[675];
+        byte dataReceive3[] = new byte[Cliente.tamanhoDeUmPacote];
         DatagramPacket pkt3 = new DatagramPacket(dataReceive3, dataReceive3.length);
         try {
             datagram.receive(pkt3);

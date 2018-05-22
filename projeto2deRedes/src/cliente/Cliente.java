@@ -38,10 +38,15 @@ import testes.testeSeUDPfazVariasCoisasAoMesmoTempo;
 public class Cliente {
 
     public static int portasClientes = 5556;
+    public static int tamanhoDeUmPacote = 661;
     private ArrayList<byte[]> pedacoDoArq = new ArrayList<>();
     private ArrayList<Pacote> pacotes = new ArrayList<>();
-    int posicaoDoArq = 0;
 
+    int posicaoDoArq = 0;
+    int tamanho_da_janela = 1;
+    int thress = 10000;
+
+    InetAddress IPAddress = null;
     private String hostName;
     private int porta;
     public DatagramSocket clienteUDP;
@@ -51,9 +56,6 @@ public class Cliente {
     int numSeqServer;
 
     int portaDoServidor;
-
-    int thresh;
-    int tamanhoDaJanela;
 
     public static int getPortasClientes() {
         return portasClientes;
@@ -119,26 +121,18 @@ public class Cliente {
         this.portaDoServidor = portaDoServidor;
     }
 
-    public int getThresh() {
-        return thresh;
-    }
-
-    public void setThresh(int thresh) {
-        this.thresh = thresh;
-    }
-
-    public int getTamanhoDaJanela() {
-        return tamanhoDaJanela;
-    }
-
-    public void setTamanhoDaJanela(int tamanhoDaJanela) {
-        this.tamanhoDaJanela = tamanhoDaJanela;
-    }
-
     public Cliente(String hostName, int porta, String caminho) {
         this.hostName = hostName;
         this.porta = porta;
         this.caminho = caminho;
+
+        //pega o ip      
+        try {
+            IPAddress = InetAddress.getByName("localhost");
+        } catch (UnknownHostException ex) {
+            System.out.println("erro a tentar traduzir o nome em ip");
+        }
+
         quebrarArquivo();
         CriarArquivo();
         try {
@@ -154,10 +148,11 @@ public class Cliente {
         try {
             c.handShake();
         } catch (IOException ex) {
-            System.out.println("erro ao fazerr handshake");
+            System.out.println("erro ao fazer handshake");
         }
-        System.out.println("o numero do servidor é :"+ c.numSeqServer);
-        byte dataReceive[] = new byte[675];
+
+        System.out.println("o numero do servidor é :" + c.numSeqServer);
+        byte dataReceive[] = new byte[tamanhoDeUmPacote];
         DatagramPacket receive = new DatagramPacket(dataReceive, dataReceive.length);
         c.clienteUDP.receive(receive);
         Pacote pedidoDeDados = converterByteParaPacote(dataReceive);
@@ -165,26 +160,105 @@ public class Cliente {
         System.out.println("seq:" + pedidoDeDados.getSequenceNumber() + " ack:" + pedidoDeDados.getAckNumber() + " id:" + pedidoDeDados.getConnectionID());
         System.out.println("<-------------------------------------------");
 
-            System.out.println("o meu numero de seq esta em;"+c.getMeuNumeroDeSeq());
-            System.out.println("o numero de seq do servidor esta em:" + c.getNumSeqServer());
-            
-        for (int i = 0; i < c.pedacoDoArq.size(); i++) {//se repete até acabar todos os pacotes 
-            
+        System.out.println("o meu numero de seq esta em;" + c.getMeuNumeroDeSeq());
+        System.out.println("o numero de seq do servidor esta em:" + c.getNumSeqServer());
+
+        //criei os pacotess 
+        for (int i = 0; i < c.pedacoDoArq.size(); i++) {//se repete até acabar todos os pacotes             
             Pacote pacote = new Pacote();
-            
             //coloca o id de conexao
             pacote.setConnectionID(c.id);
             //coloca no pacote o numero de seq
-            pacote.setSequenceNumber(c.meuNumeroDeSeq + 675);
+            pacote.setSequenceNumber(c.meuNumeroDeSeq + tamanhoDeUmPacote);
             //aqui atualiza o meu numero de seq
-            c.setMeuNumeroDeSeq(c.getMeuNumeroDeSeq() + 675);
-                      
+            c.setMeuNumeroDeSeq(c.getMeuNumeroDeSeq() + tamanhoDeUmPacote);
             //pega os bytes e coloca no pacote
             pacote.setPayload(c.pedacoDoArq.get(i));
+            System.out.println("coloquei o pacote com numero de seq:" + c.getMeuNumeroDeSeq() + " espero ack:" + pacote.getAckNumber());
+            c.pacotes.add(pacote);
+        }
+        //vai armazenar todos os pacotes de ack
+        ArrayList<Pacote> PacoteRecebidosDoServer = new ArrayList<>();
+
+        //essa thread vai ficar ouvindo na porta, todos pacotes que chegarem serão encaminhados para o array
+        OuviServidor thread = new OuviServidor(c, PacoteRecebidosDoServer);
+
+        int i = 0;
+        while (i < c.pacotes.size()) {
+            //aqui vai ser os pacotes que vou enviar 
+            ArrayList<Pacote> PacParaEnvio = new ArrayList<>();
+            //aqui eu tenho a lista sendo preenchido para envio;
+            for (int j = 0; j < c.tamanho_da_janela; j++) {
+                if (c.pacotes.get(i) != null) {
+                    System.out.println("o Pacote que eu coloquei na janela é :" + c.pacotes.get(i).getSequenceNumber());
+                    PacParaEnvio.add(c.pacotes.get(i));
+
+                    i++;
+                }
+            }
+            System.out.println("pacotes para enviar:" + PacParaEnvio.size());
+
+            //aqui vou fazer e enviar cada pacote
+            Thread_Envia_Pacote enviador = new Thread_Envia_Pacote(PacParaEnvio, c);
+
+            while (PacParaEnvio.size() > 0) {
+                //677
+                //1352
+                //2027
+                //vou pega o pacote que está no buffer vou verificar o seu numero de ack
+                //se o numero for 2027, então o número que for abaixo dele vai ser removido da lista
+                //ex 2027 > 677 entao remove
+                //   2027 > 1352 então remove
+                //   2027 > 2027 , não ai fica até ele receber 
+                //quando vier um numero maior que 2027 então vai reiniciar o while pegando novos pacotes 
+                if (PacoteRecebidosDoServer.size() > 0) {
+                    Pacote p = PacoteRecebidosDoServer.remove(0);
+                    System.out.println("peguei esse pacote de confirmacao:" + p.getAckNumber());
+
+                    int q = 0;
+                    int count = PacParaEnvio.size();
+                    System.out.println("tem " + count + " para ser confirmado");
+                    while (q < count) {
+                        int laco = 0;
+                        while (laco < PacParaEnvio.size()) {
+                            if (p.getAckNumber() > PacParaEnvio.get(laco).getSequenceNumber() || p.getAckNumber() == PacParaEnvio.get(laco).getSequenceNumber()) {
+                                System.out.println("o numero é igual");
+                                c.tamanho_da_janela++;
+                                PacParaEnvio.remove(PacParaEnvio.get(laco));
+                                System.out.println("tamanho do pacote para envio: " + PacParaEnvio.size());
+                                break;
+                            } else {
+                                laco++;
+                            }
+                        }
+                        q++;
+                    }
+                } else {
+                    //System.out.println("não tem ack do servidor ");
+                }
+                //aqui cria a threads que vai esperar as confirmaçoes 
+                //vou ter que passar para ela o array list e numero de confirmaçoes                 
+
+            }
             
-            System.out.println("coloquei o pacote com numero de seq:"+c.getMeuNumeroDeSeq()+" espero ack:"+ pacote.getAckNumber());
-            c.pacotes.add(pacote);             
-        }      
+            PacParaEnvio = null;
+            System.out.println("deu certo vou fazer outra janelaaaaaaaaaaaaa");
+            enviador.ciclo = false;
+        }
+
+    }
+
+    //n vou mais usar esse método , fiz na thread
+    public void EnviarPacoteDeDados(ArrayList<Pacote> d) {
+        for (int j = 0; j < d.size(); j++) {
+            byte pkt[] = converterPacoteEmByte(d.get(j));
+            DatagramPacket Dack = new DatagramPacket(pkt, pkt.length, IPAddress, portaDoServidor);
+            try {
+                clienteUDP.send(Dack);
+            } catch (IOException ex) {
+                System.out.println("erro ao tentar enviar a janela de pacotes");
+            }
+        }
     }
 
     public void handShake() throws IOException {
@@ -196,27 +270,19 @@ public class Cliente {
         System.out.println("------------------------------------------->");
         byte envio[] = converterPacoteEmByte(pacoteDeSicro);
 
-        //pega o ip      
-        InetAddress IPAddress = null;
-        try {
-            IPAddress = InetAddress.getByName("localhost");
-        } catch (UnknownHostException ex) {
-            System.out.println("erro a tentar traduzir o nome em ip");
-        }
-
         //criar o datagram para enviar para o servidor
         DatagramPacket pkt = new DatagramPacket(envio, envio.length, IPAddress, 5555);
 
         clienteUDP.send(pkt);
 
         ///////////////////////esperar o retorno 
-        byte dataReceive[] = new byte[675];
+        byte dataReceive[] = new byte[tamanhoDeUmPacote];
         DatagramPacket receive = new DatagramPacket(dataReceive, dataReceive.length);
         clienteUDP.receive(receive);
         Pacote confirmacao = converterByteParaPacote(dataReceive);
 
         // passo o numerro da porta que irei usar para enviar o arq
-        portaDoServidor = confirmacao.getNotUsed();
+        portaDoServidor = receive.getPort();
         id = confirmacao.getConnectionID();
         numSeqServer = confirmacao.getSequenceNumber();
         System.out.println("seq:" + confirmacao.getSequenceNumber() + " ack:" + confirmacao.getAckNumber() + " id:" + confirmacao.getConnectionID() + " ack:" + confirmacao.isAck() + " syn:" + confirmacao.isSyn());

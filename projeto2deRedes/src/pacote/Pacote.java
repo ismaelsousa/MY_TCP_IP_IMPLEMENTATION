@@ -5,6 +5,11 @@
  */
 package pacote;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
 /**
@@ -19,17 +24,9 @@ public class Pacote implements Serializable {
     private boolean ack;
     private boolean fyn;
     private boolean syn;
-    private int notUsed;
     private byte payload[]= new byte[512];
 
-    public int getNotUsed() {
-        return notUsed;
-    }
-
-    public void setNotUsed(int notUsed) {
-        this.notUsed = notUsed;
-    }
-    
+   
   public Pacote() {
        
     }
@@ -96,5 +93,44 @@ public class Pacote implements Serializable {
     public void setPayload(byte[] payload) {
         this.payload = payload;
     }
+
+    public static Pacote converterByteParaPacote(byte[] pacote) {
+
+        try {
+            ByteArrayInputStream bao = new ByteArrayInputStream(pacote);
+            ObjectInputStream ous;
+            ous = new ObjectInputStream(bao);
+            return (Pacote) ous.readObject();
+
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    public static byte[] converterPacoteEmByte(Pacote pkt) {
+        try {
+            //cria um  array de byte  que irei passar para o objectOutput para retornar o byte[] , 
+            //o pacote tem q implementar o Serializable
+            ByteArrayOutputStream bao = new ByteArrayOutputStream();
+            ObjectOutputStream ous;
+            ous = new ObjectOutputStream(bao);
+            ous.writeObject(pkt);
+            return bao.toByteArray();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            System.out.println("erro ao converte pacote em byte");
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    
 
 }

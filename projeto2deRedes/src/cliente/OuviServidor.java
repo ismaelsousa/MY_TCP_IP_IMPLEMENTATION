@@ -8,8 +8,10 @@ package cliente;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import pacote.Pacote;
 
 /**
  *
@@ -17,10 +19,12 @@ import java.util.logging.Logger;
  */
 public class OuviServidor extends Thread {
 
-    DatagramSocket c;
+    Cliente c;
+    ArrayList<Pacote> n;
 
-    public OuviServidor(DatagramSocket c) {
+    public OuviServidor(Cliente c, ArrayList<Pacote> n) {
         this.c = c;
+        this.n = n;
         this.start();
     }
 
@@ -30,13 +34,19 @@ public class OuviServidor extends Thread {
             byte dataReceive[] = new byte[675];
             DatagramPacket receive = new DatagramPacket(dataReceive, dataReceive.length);
             try {
-                System.out.println("estou ouvindo");
-                c.receive(receive);
+                
+                c.clienteUDP.receive(receive);
+                Pacote p = Pacote.converterByteParaPacote(dataReceive);
+                //aqui ele coloca o pacote disponivel 
+                n.add(p);
+                System.out.println("chegou pacote já add na fila com ack:"+ p.getAckNumber());
+                //se for um ack entao vou olhar o array list para ver se bate com algum 
+                //tem q arrumar um meio de verificar onde esta o pacote pq dependendo onde esteja eu confirmo os outros 
                 
             } catch (IOException ex) {
                 System.out.println("erro ao tentar receber pacote na thread");
             }
-            
+
         }
     }
 

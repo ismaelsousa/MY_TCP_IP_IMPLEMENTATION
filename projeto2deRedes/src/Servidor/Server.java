@@ -49,7 +49,7 @@ public class Server {
         ArrayList<ConexaoComCliente> threads = new ArrayList();
         
         byte dataReceive[] = new byte[675];
-        DatagramPacket pkt = new DatagramPacket(dataReceive, dataReceive.length);
+        DatagramPacket pkt = new DatagramPacket(dataReceive, dataReceive.length);  
         System.out.println("criei o pacote que eu vou esperar");
         try {
             while (true) {
