@@ -32,10 +32,8 @@ public class Thread_Envia_Pacote extends Thread {
     }
 
     @Override
-    public void run() {
-        System.out.println("sou a "+id+" que envia os pacotes");
-        while (ciclo) {            
-            System.out.println(id+": vou enviar os "+ pacParaEnvio.size()+" pacotes");
+    public void run() {        
+        while (ciclo) {                        
             for (int j = 0; j < pacParaEnvio.size(); j++) {
                 System.out.println(id+": enviei o pacote : " + pacParaEnvio.get(j).getSequenceNumber());
                 byte pkt[] = Pacote.converterPacoteEmByte(pacParaEnvio.get(j));
@@ -54,7 +52,7 @@ public class Thread_Envia_Pacote extends Thread {
                 System.err.print("erro ao tentar dormir na thread");
             }
         }
-        System.out.println(id+": thread envia pacote fechouuuuuu");
+        System.out.println(id+": ------------------------------------thread envia pacote fechouuuuuu");
         
     }
 

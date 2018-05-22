@@ -57,70 +57,6 @@ public class Cliente {
 
     int portaDoServidor;
 
-    public static int getPortasClientes() {
-        return portasClientes;
-    }
-
-    public static void setPortasClientes(int portasClientes) {
-        Cliente.portasClientes = portasClientes;
-    }
-
-    public ArrayList<byte[]> getPedacoDoArq() {
-        return pedacoDoArq;
-    }
-
-    public void setPedacoDoArq(ArrayList<byte[]> pedacoDoArq) {
-        this.pedacoDoArq = pedacoDoArq;
-    }
-
-    public ArrayList<Pacote> getPacotes() {
-        return pacotes;
-    }
-
-    public void setPacotes(ArrayList<Pacote> pacotes) {
-        this.pacotes = pacotes;
-    }
-
-    public int getPosicaoDoArq() {
-        return posicaoDoArq;
-    }
-
-    public void setPosicaoDoArq(int posicaoDoArq) {
-        this.posicaoDoArq = posicaoDoArq;
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public int getMeuNumeroDeSeq() {
-        return meuNumeroDeSeq;
-    }
-
-    public void setMeuNumeroDeSeq(int meuNumeroDeSeq) {
-        this.meuNumeroDeSeq = meuNumeroDeSeq;
-    }
-
-    public int getNumSeqServer() {
-        return numSeqServer;
-    }
-
-    public void setNumSeqServer(int numSeqServer) {
-        this.numSeqServer = numSeqServer;
-    }
-
-    public int getPortaDoServidor() {
-        return portaDoServidor;
-    }
-
-    public void setPortaDoServidor(int portaDoServidor) {
-        this.portaDoServidor = portaDoServidor;
-    }
-
     public Cliente(String hostName, int porta, String caminho) {
         this.hostName = hostName;
         this.porta = porta;
@@ -134,7 +70,7 @@ public class Cliente {
         }
 
         quebrarArquivo();
-        CriarArquivo();
+
         try {
             clienteUDP = new DatagramSocket(porta);
         } catch (SocketException ex) {
@@ -177,22 +113,37 @@ public class Cliente {
             System.out.println("coloquei o pacote com numero de seq:" + c.getMeuNumeroDeSeq() + " espero ack:" + pacote.getAckNumber());
             c.pacotes.add(pacote);
         }
+        
+        //*******************************************************************************************************************************************
+        //*******************************************************************************************************************************************
+        //****************                                                                                      *************************************
+        //*****************                precisdoooo mudarrrrrr issoooooooooooooooooooooo                    **************************************
+        //*****************                    fazer uma nova janela usando vetor de pacotes                   *************************************
+        //*****************                                                                                    **************************************
+        //*******************************************************************************************************************************************
+        //*******************************************************************************************************************************************
+        //*******************************************************************************************************************************************
+        //*******************************************************************************************************************************************
         //vai armazenar todos os pacotes de ack
         ArrayList<Pacote> PacoteRecebidosDoServer = new ArrayList<>();
 
         //essa thread vai ficar ouvindo na porta, todos pacotes que chegarem serão encaminhados para o array
         OuviServidor thread = new OuviServidor(c, PacoteRecebidosDoServer);
-
         int i = 0;
         while (i < c.pacotes.size()) {
             //aqui vai ser os pacotes que vou enviar 
+
             ArrayList<Pacote> PacParaEnvio = new ArrayList<>();
             //aqui eu tenho a lista sendo preenchido para envio;
             for (int j = 0; j < c.tamanho_da_janela; j++) {
                 if (c.pacotes.get(i) != null) {
                     System.out.println("o Pacote que eu coloquei na janela é :" + c.pacotes.get(i).getSequenceNumber());
-                    PacParaEnvio.add(c.pacotes.get(i));
+                    Pacote novo = new Pacote();
+                    novo.setSequenceNumber(c.pacotes.get(i).getSequenceNumber());
+                    novo.setConnectionID(c.pacotes.get(i).getConnectionID());
+                    novo.setPayload(c.pacotes.get(i).getPayload());
 
+                    PacParaEnvio.add(novo);
                     i++;
                 }
             }
@@ -212,11 +163,12 @@ public class Cliente {
                 //   2027 > 2027 , não ai fica até ele receber 
                 //quando vier um numero maior que 2027 então vai reiniciar o while pegando novos pacotes 
                 if (PacoteRecebidosDoServer.size() > 0) {
+                    //quando chegar um ack eu paro a thread que envia...
+                    enviador.ciclo = false;                    
                     Pacote p = PacoteRecebidosDoServer.remove(0);
                     System.out.println("peguei esse pacote de confirmacao:" + p.getAckNumber());
-
                     int q = 0;
-                    int count = PacParaEnvio.size();
+                    int count = PacParaEnvio.size();                    
                     System.out.println("tem " + count + " para ser confirmado");
                     while (q < count) {
                         int laco = 0;
@@ -233,17 +185,19 @@ public class Cliente {
                         }
                         q++;
                     }
+                    enviador = new Thread_Envia_Pacote(PacParaEnvio, c);
                 } else {
+                    
                     //System.out.println("não tem ack do servidor ");
                 }
                 //aqui cria a threads que vai esperar as confirmaçoes 
                 //vou ter que passar para ela o array list e numero de confirmaçoes                 
 
             }
-            
+
             PacParaEnvio = null;
             System.out.println("deu certo vou fazer outra janelaaaaaaaaaaaaa");
-            enviador.ciclo = false;
+
         }
 
     }
@@ -390,6 +344,70 @@ public class Cliente {
         }
 
         return null;
+    }
+
+    public static int getPortasClientes() {
+        return portasClientes;
+    }
+
+    public static void setPortasClientes(int portasClientes) {
+        Cliente.portasClientes = portasClientes;
+    }
+
+    public ArrayList<byte[]> getPedacoDoArq() {
+        return pedacoDoArq;
+    }
+
+    public void setPedacoDoArq(ArrayList<byte[]> pedacoDoArq) {
+        this.pedacoDoArq = pedacoDoArq;
+    }
+
+    public ArrayList<Pacote> getPacotes() {
+        return pacotes;
+    }
+
+    public void setPacotes(ArrayList<Pacote> pacotes) {
+        this.pacotes = pacotes;
+    }
+
+    public int getPosicaoDoArq() {
+        return posicaoDoArq;
+    }
+
+    public void setPosicaoDoArq(int posicaoDoArq) {
+        this.posicaoDoArq = posicaoDoArq;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public int getMeuNumeroDeSeq() {
+        return meuNumeroDeSeq;
+    }
+
+    public void setMeuNumeroDeSeq(int meuNumeroDeSeq) {
+        this.meuNumeroDeSeq = meuNumeroDeSeq;
+    }
+
+    public int getNumSeqServer() {
+        return numSeqServer;
+    }
+
+    public void setNumSeqServer(int numSeqServer) {
+        this.numSeqServer = numSeqServer;
+    }
+
+    public int getPortaDoServidor() {
+        return portaDoServidor;
+    }
+
+    public void setPortaDoServidor(int portaDoServidor) {
+        this.portaDoServidor = portaDoServidor;
     }
 
     public String getHostName() {
