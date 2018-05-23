@@ -29,6 +29,7 @@ import pacote.Pacote;
 import java.io.*;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
+import java.util.Timer;
 import testes.testeSeUDPfazVariasCoisasAoMesmoTempo;
 
 /**
@@ -41,10 +42,6 @@ public class Cliente {
     public static int tamanhoDeUmPacote = 661;
     private ArrayList<byte[]> pedacoDoArq = new ArrayList<>();
     private ArrayList<Pacote> pacotes = new ArrayList<>();
-
-    int posicaoDoArq = 0;
-    int tamanho_da_janela = 1;
-    int thress = 10000;
 
     InetAddress IPAddress = null;
     private String hostName;
@@ -72,7 +69,7 @@ public class Cliente {
         quebrarArquivo();
 
         try {
-            clienteUDP = new DatagramSocket(porta);
+            clienteUDP = new DatagramSocket(++portasClientes);
         } catch (SocketException ex) {
             System.out.println("erro: não foi possivel abrir o datagramSocket no cliente na porta" + porta);
         }
@@ -80,7 +77,7 @@ public class Cliente {
 
     public static void main(String[] args) throws IOException {
         //criando a propria instancia da classe cliente        
-        Cliente c = new Cliente("localhost", ++Cliente.portasClientes, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\parei pag 22.txt");
+        Cliente c = new Cliente("localhost", portasClientes, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\parei pag 22.txt");
         try {
             c.handShake();
         } catch (IOException ex) {
@@ -113,12 +110,13 @@ public class Cliente {
             System.out.println("coloquei o pacote com numero de seq:" + c.getMeuNumeroDeSeq() + " espero ack:" + pacote.getAckNumber());
             c.pacotes.add(pacote);
         }
-        
+
+            System.out.println("pacote: "+c.pacotes.size());
         //*******************************************************************************************************************************************
         //*******************************************************************************************************************************************
         //****************                                                                                      *************************************
         //*****************                precisdoooo mudarrrrrr issoooooooooooooooooooooo                    **************************************
-        //*****************                    fazer uma nova janela usando vetor de pacotes                   *************************************
+        //*****************                    fazer uma nova janela                                            *************************************
         //*****************                                                                                    **************************************
         //*******************************************************************************************************************************************
         //*******************************************************************************************************************************************
@@ -126,79 +124,88 @@ public class Cliente {
         //*******************************************************************************************************************************************
         //vai armazenar todos os pacotes de ack
         ArrayList<Pacote> PacoteRecebidosDoServer = new ArrayList<>();
-
         //essa thread vai ficar ouvindo na porta, todos pacotes que chegarem serão encaminhados para o array
         OuviServidor thread = new OuviServidor(c, PacoteRecebidosDoServer);
-        int i = 0;
-        while (i < c.pacotes.size()) {
-            //aqui vai ser os pacotes que vou enviar 
+        int base = 0;
+        int nextSeqNum = 0;
+        int tamanho_da_janela = 1;
+        int thress = 10000;
+        Timer timeOut = new Timer();
+        Thread_Envia_Pacote enviador;
+        
+        while (nextSeqNum < c.pacotes.size()) {
+            
+            System.out.println("*********************************************************************");
+            System.out.println("base:" + base);
+            System.out.println("next:" + nextSeqNum);
 
-            ArrayList<Pacote> PacParaEnvio = new ArrayList<>();
-            //aqui eu tenho a lista sendo preenchido para envio;
-            for (int j = 0; j < c.tamanho_da_janela; j++) {
-                if (c.pacotes.get(i) != null) {
-                    System.out.println("o Pacote que eu coloquei na janela é :" + c.pacotes.get(i).getSequenceNumber());
-                    Pacote novo = new Pacote();
-                    novo.setSequenceNumber(c.pacotes.get(i).getSequenceNumber());
-                    novo.setConnectionID(c.pacotes.get(i).getConnectionID());
-                    novo.setPayload(c.pacotes.get(i).getPayload());
+            if (base == 0) {
+                nextSeqNum++;
+                enviador = new Thread_Envia_Pacote(base, nextSeqNum, c);
+                //envia os pacote e enicia o temporizador
+                timeOut.schedule(enviador, 0, 500);
 
-                    PacParaEnvio.add(novo);
-                    i++;
+            } else if (base == c.pacotes.size() - 1) {//NO ULTIMO CASO ELE N ENVIA O ULTIMO PACOTE
+                enviador = new Thread_Envia_Pacote(base, nextSeqNum, c);
+                //envia os pacote e enicia o temporizador
+                timeOut.schedule(enviador, 0, 500);
+
+            } else if (base == nextSeqNum) {
+                int i = 0;
+                //se nextseqnum + 1 for igual ao tamanho do arraylist então n entra
+                while (i < tamanho_da_janela && (nextSeqNum + 1) < c.pacotes.size()) {
+                    nextSeqNum++;
                 }
+
+                enviador = new Thread_Envia_Pacote(base, nextSeqNum, c);
+                //envia os pacote e enicia o temporizador
+                timeOut = new Timer();
+                timeOut.schedule(enviador, 0, 500);
             }
-            System.out.println("pacotes para enviar:" + PacParaEnvio.size());
 
-            //aqui vou fazer e enviar cada pacote
-            Thread_Envia_Pacote enviador = new Thread_Envia_Pacote(PacParaEnvio, c);
-
-            while (PacParaEnvio.size() > 0) {
-                //677
-                //1352
-                //2027
-                //vou pega o pacote que está no buffer vou verificar o seu numero de ack
-                //se o numero for 2027, então o número que for abaixo dele vai ser removido da lista
-                //ex 2027 > 677 entao remove
-                //   2027 > 1352 então remove
-                //   2027 > 2027 , não ai fica até ele receber 
-                //quando vier um numero maior que 2027 então vai reiniciar o while pegando novos pacotes 
-                if (PacoteRecebidosDoServer.size() > 0) {
-                    //quando chegar um ack eu paro a thread que envia...
-                    enviador.ciclo = false;                    
+            while (base != nextSeqNum || base == c.pacotes.size() - 1) {
+                if (PacoteRecebidosDoServer.size() > 0) {//se tiver ack                     
                     Pacote p = PacoteRecebidosDoServer.remove(0);
-                    System.out.println("peguei esse pacote de confirmacao:" + p.getAckNumber());
-                    int q = 0;
-                    int count = PacParaEnvio.size();                    
-                    System.out.println("tem " + count + " para ser confirmado");
-                    while (q < count) {
-                        int laco = 0;
-                        while (laco < PacParaEnvio.size()) {
-                            if (p.getAckNumber() > PacParaEnvio.get(laco).getSequenceNumber() || p.getAckNumber() == PacParaEnvio.get(laco).getSequenceNumber()) {
-                                System.out.println("o numero é igual");
-                                c.tamanho_da_janela++;
-                                PacParaEnvio.remove(PacParaEnvio.get(laco));
-                                System.out.println("tamanho do pacote para envio: " + PacParaEnvio.size());
-                                break;
-                            } else {
-                                laco++;
-                            }
-                        }
-                        q++;
+                    System.out.println("removi o pacote ack");
+                    //aqui eu preciso atualizar a minha base de acordo com o ack, se for acumulativo ele vai ficar aumentando a base até o ack esperado
+                    while (p.getAckNumber() > c.pacotes.get(base).getSequenceNumber() && p.getAckNumber() <= c.pacotes.get(nextSeqNum).getSequenceNumber()) {
+                        System.out.println("ack:" + p.getAckNumber() + " > base:" + c.pacotes.get(base).getSequenceNumber());
+                        //para cada pacote confirmado eu aumento a janela 
+                        tamanho_da_janela++;
+                        base++;
                     }
-                    enviador = new Thread_Envia_Pacote(PacParaEnvio, c);
-                } else {
-                    
-                    //System.out.println("não tem ack do servidor ");
+                    if (base == nextSeqNum && base == c.pacotes.size() - 1) {
+                        timeOut.cancel();
+                        timeOut.purge();
+                        //aumentar o nextseqnum para sair do while de envio
+                        nextSeqNum++;
+                        System.out.println("fim do envio ");
+                        System.out.println("next:"+nextSeqNum);
+                        System.out.println("base:"+base);
+                        System.out.println("num d seq next: "+c.pacotes.get(nextSeqNum).getSequenceNumber());
+                        System.out.println("numero de sequencia do ultimo enviado:"+c.pacotes.get(base).getSequenceNumber());
+                        System.exit(0);
+                    } else if (base == nextSeqNum) {
+                        //para o envio repetitivo porque agora eu vou atualizar a janela
+                        timeOut.cancel();
+                        timeOut.purge();
+
+                        System.out.println("vai cria uma nova janela");
+                    } else {//se não é porque tem pacote sem ser reconhecidos ainda então preciso reenviar, então dou start para enviar esperando o 0.5 sec
+                        timeOut.cancel();
+                        timeOut.purge();
+
+                        enviador = new Thread_Envia_Pacote(base, nextSeqNum, c);
+                        timeOut = new Timer();
+                        timeOut.schedule(enviador, 500, 500);
+
+                    }
+
                 }
-                //aqui cria a threads que vai esperar as confirmaçoes 
-                //vou ter que passar para ela o array list e numero de confirmaçoes                 
-
             }
-
-            PacParaEnvio = null;
-            System.out.println("deu certo vou fazer outra janelaaaaaaaaaaaaa");
 
         }
+        
 
     }
 
@@ -368,14 +375,6 @@ public class Cliente {
 
     public void setPacotes(ArrayList<Pacote> pacotes) {
         this.pacotes = pacotes;
-    }
-
-    public int getPosicaoDoArq() {
-        return posicaoDoArq;
-    }
-
-    public void setPosicaoDoArq(int posicaoDoArq) {
-        this.posicaoDoArq = posicaoDoArq;
     }
 
     public int getId() {

@@ -8,6 +8,7 @@ package cliente;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.util.ArrayList;
+import java.util.TimerTask;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import pacote.Pacote;
@@ -16,44 +17,35 @@ import pacote.Pacote;
  *
  * @author ismae
  */
-public class Thread_Envia_Pacote extends Thread {
-    public static int idDaThread = 0;
-    ArrayList<Pacote> pacParaEnvio;
-    Cliente c;
-    int id;
-    boolean ciclo = true;
+public class Thread_Envia_Pacote extends TimerTask {
 
-    public Thread_Envia_Pacote(ArrayList<Pacote> PacParaEnvio, Cliente c) {
-        id= idDaThread;
-        idDaThread++;
-        this.pacParaEnvio = PacParaEnvio;
+    Cliente c;
+    boolean ciclo = true;
+    int base;
+    int nextSeqNum;
+
+    public Thread_Envia_Pacote(int base, int nextSeqNum, Cliente c) {
         this.c = c;
-        this.start();
+        //por que fiz novo, para não passar a refencia e sim criar um novo 
+        this.base = base;
+        this.nextSeqNum = nextSeqNum;
+        System.out.println("tarefa criada");
+
     }
 
     @Override
-    public void run() {        
-        while (ciclo) {                        
-            for (int j = 0; j < pacParaEnvio.size(); j++) {
-                System.out.println(id+": enviei o pacote : " + pacParaEnvio.get(j).getSequenceNumber());
-                byte pkt[] = Pacote.converterPacoteEmByte(pacParaEnvio.get(j));
-                DatagramPacket Dack = new DatagramPacket(pkt, pkt.length, c.IPAddress, c.portaDoServidor);
-                try {
-                    c.clienteUDP.send(Dack);
-
-                } catch (IOException ex) {
-                    System.out.println("erro ao tentar enviar a janela de pacotes");
-                }
-            }
-            System.out.println("já enviei os pacotes vou esperar 0.5 secundo");
+    public void run() {
+        for (int j = base; j < nextSeqNum || base == c.getPacotes().size()-1; j++) {
+            System.out.println("enviei:" + c.getPacotes().get(j).getSequenceNumber());
+            byte pkt[] = Pacote.converterPacoteEmByte(c.getPacotes().get(j));
+            DatagramPacket Dack = new DatagramPacket(pkt, pkt.length, c.IPAddress, c.portaDoServidor);
             try {
-                Thread.sleep(500);
-            } catch (InterruptedException ex) {
-                System.err.print("erro ao tentar dormir na thread");
+                c.clienteUDP.send(Dack);
+
+            } catch (IOException ex) {
+                System.out.println("erro ao tentar enviar a janela de pacotes");
             }
         }
-        System.out.println(id+": ------------------------------------thread envia pacote fechouuuuuu");
-        
     }
 
 }
