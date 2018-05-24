@@ -66,9 +66,6 @@ public class Server {
                 if (p.isSyn()) {
                   NoCliente novo = new NoCliente(++idDosClientes, pkt.getPort(), pkt.getAddress(), p.getSequenceNumber());
                   ConexaoComCliente thread = new ConexaoComCliente(novo);                                  
-                }else{
-                   
-                    
                 }
                 
             }

@@ -83,14 +83,17 @@ public class ConexaoComCliente extends Thread {
 
                 //atualizo qual eu vou esperar receber
                 noCliente.setNumSecCliente(noCliente.getNumSecCliente() + Cliente.tamanhoDeUmPacote);
-
+                
+                //testteeeee
+                
+               
                 p =ack = new Pacote(true, false, false);
                 ack.setSequenceNumber((meuNumSeq += Cliente.tamanhoDeUmPacote));
                 ack.setAckNumber(noCliente.getNumSecCliente());
                 EnviarPacoteCliente(p);
                 System.out.println("recebi vamos para outro");
 
-            } else if(p != null){
+            } else if(p != null){//caso chegue outro pacotes que eu n esteja esperando eu reenvio                 
                 EnviarPacoteCliente(p);
                 System.out.println("enviei o ack repetido: "+p.getAckNumber());
             }

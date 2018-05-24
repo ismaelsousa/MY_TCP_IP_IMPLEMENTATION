@@ -27,25 +27,31 @@ public class Thread_Envia_Pacote extends TimerTask {
     public Thread_Envia_Pacote(int base, int nextSeqNum, Cliente c) {
         this.c = c;
         //por que fiz novo, para não passar a refencia e sim criar um novo 
-        this.base = base;
-        this.nextSeqNum = nextSeqNum;
+        this.base = new Integer(base);
+        this.nextSeqNum = new Integer(nextSeqNum);
         System.out.println("tarefa criada");
 
     }
 
     @Override
     public void run() {
-        for (int j = base; j < nextSeqNum || base == c.getPacotes().size()-1; j++) {
-            System.out.println("enviei:" + c.getPacotes().get(j).getSequenceNumber());
-            byte pkt[] = Pacote.converterPacoteEmByte(c.getPacotes().get(j));
-            DatagramPacket Dack = new DatagramPacket(pkt, pkt.length, c.IPAddress, c.portaDoServidor);
-            try {
-                c.clienteUDP.send(Dack);
+        for (int j = base; j < nextSeqNum; j++) {
+            if (j < c.getPacotes().size()) {
+                if (ciclo == true) {
+                    System.out.println("enviei:" + c.getPacotes().get(j).getSequenceNumber());
+                }
 
-            } catch (IOException ex) {
-                System.out.println("erro ao tentar enviar a janela de pacotes");
+                byte pkt[] = Pacote.converterPacoteEmByte(c.getPacotes().get(j));
+                DatagramPacket Dack = new DatagramPacket(pkt, pkt.length, c.IPAddress, c.portaDoServidor);
+                try {
+                    c.clienteUDP.send(Dack);
+
+                } catch (IOException ex) {
+                    System.out.println("erro ao tentar enviar a janela de pacotes");
+                }
             }
         }
+        ciclo = false;
     }
 
 }

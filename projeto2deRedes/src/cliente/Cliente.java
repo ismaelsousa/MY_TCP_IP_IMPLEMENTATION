@@ -77,7 +77,7 @@ public class Cliente {
 
     public static void main(String[] args) throws IOException {
         //criando a propria instancia da classe cliente        
-        Cliente c = new Cliente("localhost", portasClientes, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\parei pag 22.txt");
+        Cliente c = new Cliente("localhost", ++portasClientes, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\parei pag 22.txt");
         try {
             c.handShake();
         } catch (IOException ex) {
@@ -111,7 +111,7 @@ public class Cliente {
             c.pacotes.add(pacote);
         }
 
-            System.out.println("pacote: "+c.pacotes.size());
+        System.out.println("pacote: " + c.pacotes.size());
         //*******************************************************************************************************************************************
         //*******************************************************************************************************************************************
         //****************                                                                                      *************************************
@@ -122,39 +122,46 @@ public class Cliente {
         //*******************************************************************************************************************************************
         //*******************************************************************************************************************************************
         //*******************************************************************************************************************************************
-        //vai armazenar todos os pacotes de ack
-        ArrayList<Pacote> PacoteRecebidosDoServer = new ArrayList<>();
+        
         //essa thread vai ficar ouvindo na porta, todos pacotes que chegarem serão encaminhados para o array
-        OuviServidor thread = new OuviServidor(c, PacoteRecebidosDoServer);
+        System.out.println("criei o ouvindo");
+        OuviServidor thread = new OuviServidor(c);
         int base = 0;
         int nextSeqNum = 0;
         int tamanho_da_janela = 1;
         int thress = 10000;
+        boolean primeiraVez = true;//serve para saber se já enviou o ultimo pacote
         Timer timeOut = new Timer();
         Thread_Envia_Pacote enviador;
-        
+
         while (nextSeqNum < c.pacotes.size()) {
-            
+
             System.out.println("*********************************************************************");
-            System.out.println("base:" + base);
-            System.out.println("next:" + nextSeqNum);
+            System.out.println("                                    base:" + base);
+            System.out.println("                                    next:" + nextSeqNum);
+            System.out.println("*********************************************************************");
 
             if (base == 0) {
+                System.out.println("entrou no if de base == 0");
                 nextSeqNum++;
                 enviador = new Thread_Envia_Pacote(base, nextSeqNum, c);
                 //envia os pacote e enicia o temporizador
                 timeOut.schedule(enviador, 0, 500);
 
             } else if (base == c.pacotes.size() - 1) {//NO ULTIMO CASO ELE N ENVIA O ULTIMO PACOTE
+                System.out.println("entrou na base igual ao final");
                 enviador = new Thread_Envia_Pacote(base, nextSeqNum, c);
                 //envia os pacote e enicia o temporizador
+                timeOut = new Timer();
                 timeOut.schedule(enviador, 0, 500);
 
-            } else if (base == nextSeqNum) {
+            } else {
+                System.out.println("aumentar o nextseqnum");
                 int i = 0;
                 //se nextseqnum + 1 for igual ao tamanho do arraylist então n entra
                 while (i < tamanho_da_janela && (nextSeqNum + 1) < c.pacotes.size()) {
                     nextSeqNum++;
+                    i++;
                 }
 
                 enviador = new Thread_Envia_Pacote(base, nextSeqNum, c);
@@ -164,34 +171,50 @@ public class Cliente {
             }
 
             while (base != nextSeqNum || base == c.pacotes.size() - 1) {
-                if (PacoteRecebidosDoServer.size() > 0) {//se tiver ack                     
-                    Pacote p = PacoteRecebidosDoServer.remove(0);
+                System.out.println("esta esperando pacotes");
+                Pacote p = ThreadArrayCompartilhado.acessarArray(2, null);
+                //coloca a threadd aquiiii
+                
+                if (p != null) {//se tiver ack                     
+
                     System.out.println("removi o pacote ack");
+
                     //aqui eu preciso atualizar a minha base de acordo com o ack, se for acumulativo ele vai ficar aumentando a base até o ack esperado
-                    while (p.getAckNumber() > c.pacotes.get(base).getSequenceNumber() && p.getAckNumber() <= c.pacotes.get(nextSeqNum).getSequenceNumber()) {
+                    while (p.getAckNumber() > c.pacotes.get(base).getSequenceNumber() && p.getAckNumber() <= c.pacotes.get(c.pacotes.size() - 1).getSequenceNumber()) {
                         System.out.println("ack:" + p.getAckNumber() + " > base:" + c.pacotes.get(base).getSequenceNumber());
                         //para cada pacote confirmado eu aumento a janela 
+                        if (base == c.pacotes.size() - 1) {
+                            break;
+                        }
                         tamanho_da_janela++;
                         base++;
                     }
-                    if (base == nextSeqNum && base == c.pacotes.size() - 1) {
+                    if (base == c.pacotes.size() - 1 && primeiraVez == true) {
+                        primeiraVez = false;
+                        System.out.println(" 183 -Agora a a base está no ultimo pacote");
                         timeOut.cancel();
                         timeOut.purge();
                         //aumentar o nextseqnum para sair do while de envio
                         nextSeqNum++;
                         System.out.println("fim do envio ");
-                        System.out.println("next:"+nextSeqNum);
-                        System.out.println("base:"+base);
-                        System.out.println("num d seq next: "+c.pacotes.get(nextSeqNum).getSequenceNumber());
-                        System.out.println("numero de sequencia do ultimo enviado:"+c.pacotes.get(base).getSequenceNumber());
-                        System.exit(0);
+                        System.out.println("next:" + nextSeqNum);
+                        System.out.println("base:" + base);
+
+                        System.out.println("numero de sequencia do ultimo enviado:" + c.pacotes.get(base).getSequenceNumber());
+
+                        enviador = new Thread_Envia_Pacote(base, nextSeqNum, c);
+                        timeOut = new Timer();
+                        timeOut.schedule(enviador, 0, 500);
+
                     } else if (base == nextSeqNum) {
+                        System.out.println("195 -Parei temporizador ");
                         //para o envio repetitivo porque agora eu vou atualizar a janela
                         timeOut.cancel();
                         timeOut.purge();
 
                         System.out.println("vai cria uma nova janela");
                     } else {//se não é porque tem pacote sem ser reconhecidos ainda então preciso reenviar, então dou start para enviar esperando o 0.5 sec
+                        System.out.println("reinicia o temporizador");
                         timeOut.cancel();
                         timeOut.purge();
 
@@ -202,11 +225,19 @@ public class Cliente {
                     }
 
                 }
+                if (base == c.pacotes.size() - 1) {
+                    break;
+                }
             }
-
+            //para cancelar o envio repetitivo
+            System.out.println("deu uma volta no while de fora ");
+            timeOut.cancel();
+            timeOut.purge();
         }
-        
-
+        System.out.println("terminou o envio uffa");
+        timeOut.cancel();
+        timeOut.purge();
+        System.exit(0);
     }
 
     //n vou mais usar esse método , fiz na thread
