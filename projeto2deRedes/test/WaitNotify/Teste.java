@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package testes;
+package WaitNotify;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -12,22 +12,19 @@ import java.util.logging.Logger;
  *
  * @author ismae
  */
-public class Testethread {
+public class Teste {
+
     public static void main(String[] args) {
-        int i = 4;
-        System.out.println(i);
-        Threadparave t= new Threadparave(i);
-        t.start();
-        
+        TiqueTaque tt = new TiqueTaque();
+        ThreadTiqueTaque tique = new ThreadTiqueTaque("Tique", tt);
+        ThreadTiqueTaque taque = new ThreadTiqueTaque("Taque", tt);
+
         try {
-            t.join();
+            tique.t.join();
+            taque.t.join();
         } catch (InterruptedException ex) {
-            Logger.getLogger(Testethread.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(Teste.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
-        System.out.println(i);
-        
-        
+
     }
-    
 }

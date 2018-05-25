@@ -27,6 +27,4 @@ public class ThreadArrayCompartilhado extends Thread {
         }
         return null;
     }
-    
-    
 }

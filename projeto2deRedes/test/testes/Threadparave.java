@@ -5,22 +5,26 @@
  */
 package testes;
 
+import java.util.ArrayList;
+
 /**
  *
  * @author ismae
  */
-public class Threadparave extends Thread{
-int i;
+public class Threadparave extends Thread {
 
-    public Threadparave(int i) {
+    ArrayList i;
+
+    public Threadparave(ArrayList i) {
         this.i = i;
     }
 
     @Override
     public void run() {
-        i++;
+        i.remove(0);
+        System.out.println("removi agor ao array esta com:" + i.size());
+
         System.out.println(i);
     }
-    
-    
+
 }

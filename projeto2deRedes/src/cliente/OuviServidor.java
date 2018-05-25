@@ -22,9 +22,6 @@ public class OuviServidor extends Thread {
     Cliente c;
     private String name = "ouvidorr";
 
-    
-   
-
     public OuviServidor(Cliente c) {
         this.c = c;
         System.out.println("fui criado");
@@ -50,18 +47,21 @@ public class OuviServidor extends Thread {
                     System.out.println("add o primeiro pacote");
                     ultimoPac = p;
                     ThreadArrayCompartilhado.acessarArray(1, p);
+                 
+
                 } else if (ultimoPac.getAckNumber() != p.getAckNumber()) {
                     //se o cara novo que chegouu for diferente do que já tinha chegado eu atualizo  ele e coloco na lista
                     ultimoPac = p;
                     ThreadArrayCompartilhado.acessarArray(1, p);
                     System.out.println("chegou pacote já add na fila com ack:" + p.getAckNumber());
+                  
                 }
 
                 //se for um ack entao vou olhar o array list para ver se bate com algum 
                 //tem q arrumar um meio de verificar onde esta o pacote pq dependendo onde esteja eu confirmo os outros 
             } catch (IOException ex) {
                 System.out.println("erro ao tentar receber pacote na thread");
-            }
+            } 
 
         }
     }

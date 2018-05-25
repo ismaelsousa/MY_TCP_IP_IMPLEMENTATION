@@ -30,7 +30,6 @@ import java.io.*;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.util.Timer;
-import testes.testeSeUDPfazVariasCoisasAoMesmoTempo;
 
 /**
  *
@@ -75,7 +74,7 @@ public class Cliente {
         }
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
         //criando a propria instancia da classe cliente        
         Cliente c = new Cliente("localhost", ++portasClientes, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\parei pag 22.txt");
         try {
@@ -122,7 +121,7 @@ public class Cliente {
         //*******************************************************************************************************************************************
         //*******************************************************************************************************************************************
         //*******************************************************************************************************************************************
-        
+
         //essa thread vai ficar ouvindo na porta, todos pacotes que chegarem serão encaminhados para o array
         System.out.println("criei o ouvindo");
         OuviServidor thread = new OuviServidor(c);
@@ -171,10 +170,12 @@ public class Cliente {
             }
 
             while (base != nextSeqNum || base == c.pacotes.size() - 1) {
-                System.out.println("esta esperando pacotes");
+
                 Pacote p = ThreadArrayCompartilhado.acessarArray(2, null);
                 //coloca a threadd aquiiii
-                
+                if (p == null) {
+                    Thread.sleep(100);
+                }
                 if (p != null) {//se tiver ack                     
 
                     System.out.println("removi o pacote ack");
