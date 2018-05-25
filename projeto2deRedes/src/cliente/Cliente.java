@@ -179,6 +179,10 @@ public class Cliente {
                 if (p != null) {//se tiver ack                     
 
                     System.out.println("removi o pacote ack");
+                    if((base == (c.pacotes.size()-1)) && p.getAckNumber() > c.pacotes.get(base).getSequenceNumber()){
+                        System.out.println("ultimo pacote confirmado");
+                        break;
+                    }
 
                     //aqui eu preciso atualizar a minha base de acordo com o ack, se for acumulativo ele vai ficar aumentando a base até o ack esperado
                     while (p.getAckNumber() > c.pacotes.get(base).getSequenceNumber() && p.getAckNumber() <= c.pacotes.get(c.pacotes.size() - 1).getSequenceNumber()) {
@@ -226,9 +230,7 @@ public class Cliente {
                     }
 
                 }
-                if (base == c.pacotes.size() - 1) {
-                    break;
-                }
+                
             }
             //para cancelar o envio repetitivo
             System.out.println("deu uma volta no while de fora ");
