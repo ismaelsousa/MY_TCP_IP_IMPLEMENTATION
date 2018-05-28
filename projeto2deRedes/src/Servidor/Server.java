@@ -29,9 +29,12 @@ public class Server {
 
     public static int idDosClientes = 0;
     public static int portaUDPs;
+    public static String caminho;
+    
     private DatagramSocket servidorUDP;
 
     public Server(int porta, String caminho) {
+        this.caminho = caminho;
         try {
             portaUDPs = porta;
             System.out.println(portaUDPs);
@@ -43,7 +46,8 @@ public class Server {
 
     public static void main(String[] args) {
         //criando a propria class
-        Server server = new Server(5555, "");
+        Server server = new Server(5555, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\");
+        
         System.out.println("criei o servidor");
         //lista de threads 
         ArrayList<ConexaoComCliente> threads = new ArrayList();

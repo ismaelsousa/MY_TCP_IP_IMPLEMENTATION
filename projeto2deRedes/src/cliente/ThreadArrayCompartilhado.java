@@ -14,9 +14,9 @@ import pacote.Pacote;
  */
 public class ThreadArrayCompartilhado extends Thread {
 
-    private static ArrayList<Pacote> PacoteRecebidosDoServer = new ArrayList<>();
+    private  ArrayList<Pacote> PacoteRecebidosDoServer = new ArrayList<>();
 
-    public static synchronized Pacote acessarArray(int op, Pacote pacote) {
+    public synchronized Pacote acessarArray(int op, Pacote pacote) {
         System.out.println("a thread que está acessando é:" + Thread.currentThread().getName());
         if (op == 1 && pacote != null) {
             PacoteRecebidosDoServer.add(pacote);

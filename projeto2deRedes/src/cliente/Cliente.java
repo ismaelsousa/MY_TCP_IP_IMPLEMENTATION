@@ -37,8 +37,8 @@ import java.util.Timer;
  */
 public class Cliente {
 
-    public static int portasClientes = 5556;
     public static int tamanhoDeUmPacote = 661;
+    public ThreadArrayCompartilhado ArrayDeRecebimento = new ThreadArrayCompartilhado();
     private ArrayList<byte[]> pedacoDoArq = new ArrayList<>();
     private ArrayList<Pacote> pacotes = new ArrayList<>();
 
@@ -50,39 +50,77 @@ public class Cliente {
     int id;
     int meuNumeroDeSeq = 1;
     int numSeqServer;
-
     int portaDoServidor;
 
     public Cliente(String hostName, int porta, String caminho) {
         this.hostName = hostName;
-        this.porta = porta;
         this.caminho = caminho;
-
+        this.porta = porta;
         //pega o ip      
         try {
-            IPAddress = InetAddress.getByName("localhost");
+            IPAddress = InetAddress.getByName(hostName);
         } catch (UnknownHostException ex) {
             System.out.println("erro a tentar traduzir o nome em ip");
         }
-
         quebrarArquivo();
-
         try {
-            clienteUDP = new DatagramSocket(++portasClientes);
+
+            this.clienteUDP = new DatagramSocket(porta);
+
         } catch (SocketException ex) {
             System.out.println("erro: não foi possivel abrir o datagramSocket no cliente na porta" + porta);
         }
     }
 
-    public static void main(String[] args) throws IOException, InterruptedException {
-        //criando a propria instancia da classe cliente        
-        Cliente c = new Cliente("localhost", ++portasClientes, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\parei pag 22.txt");
+    public static void main(String[] args) {
         try {
-            c.handShake();
+            //criando a propria instancia da classe cliente        
+            Cliente c = new Cliente("localhost", 10200, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\parei pag 22.txt");
+
+            c.handShake(c);
+            c.enviarArquivo(c);
+            c.encerrarConexao(c);
+
+            //quando chegar eu espero 2 sec para o ouvidor responder
+            Thread.sleep(2000);
+
+            //que tenha chegado ou não eu fecho depois do 2 sec
+            System.exit(0);
+
         } catch (IOException ex) {
             System.out.println("erro ao fazer handshake");
+        } catch (InterruptedException ex) {
+            System.out.println("Erro ao enviar o arquivo para o server");
         }
 
+    }
+
+    public void encerrarConexao(Cliente c) {
+        //vou envviar o fin 
+        //esperar o ack 
+        //esperar o fim
+        //enviar o ack
+
+        Pacote pacote = new Pacote();
+        //coloca o id de conexao
+        pacote.setConnectionID(c.id);
+        pacote.setSequenceNumber(c.meuNumeroDeSeq + 1);//coloca no pacote o numero de seq
+        c.setMeuNumeroDeSeq(c.getMeuNumeroDeSeq() + 1);//aqui atualiza o meu numero de seq
+        pacote.setFyn(true);
+
+        byte pkt[] = Pacote.converterPacoteEmByte(pacote);
+        DatagramPacket Dack = new DatagramPacket(pkt, pkt.length, c.IPAddress, c.portaDoServidor);
+        try {
+            c.clienteUDP.send(Dack);
+        } catch (IOException ex) {
+            System.out.println("erro ao tentar enviar a janela de pacotes");
+        }
+
+        //vou criar uma tarefa que se o fyn não chegar em 2 sec eu fecho tudo 
+        //está na no ouvidor
+    }
+
+    public void enviarArquivo(Cliente c) throws IOException, InterruptedException {
         System.out.println("o numero do servidor é :" + c.numSeqServer);
         byte dataReceive[] = new byte[tamanhoDeUmPacote];
         DatagramPacket receive = new DatagramPacket(dataReceive, dataReceive.length);
@@ -101,6 +139,14 @@ public class Cliente {
             //coloca o id de conexao
             pacote.setConnectionID(c.id);
             //coloca no pacote o numero de seq
+            //------------------------------------------------------------------------------------//
+            //--------------------                                              ------------------//
+            //--------------------  se o numero de seq for maior que 102400     ------------------//
+            //--------------------        vai para zero                         ------------------//
+            //------------------------------------------------------------------------------------//
+            if ((c.meuNumeroDeSeq + tamanhoDeUmPacote) > 102400) {
+                c.meuNumeroDeSeq = 0;
+            }
             pacote.setSequenceNumber(c.meuNumeroDeSeq + tamanhoDeUmPacote);
             //aqui atualiza o meu numero de seq
             c.setMeuNumeroDeSeq(c.getMeuNumeroDeSeq() + tamanhoDeUmPacote);
@@ -109,18 +155,6 @@ public class Cliente {
             System.out.println("coloquei o pacote com numero de seq:" + c.getMeuNumeroDeSeq() + " espero ack:" + pacote.getAckNumber());
             c.pacotes.add(pacote);
         }
-
-        System.out.println("pacote: " + c.pacotes.size());
-        //*******************************************************************************************************************************************
-        //*******************************************************************************************************************************************
-        //****************                                                                                      *************************************
-        //*****************                precisdoooo mudarrrrrr issoooooooooooooooooooooo                    **************************************
-        //*****************                    fazer uma nova janela                                            *************************************
-        //*****************                                                                                    **************************************
-        //*******************************************************************************************************************************************
-        //*******************************************************************************************************************************************
-        //*******************************************************************************************************************************************
-        //*******************************************************************************************************************************************
 
         //essa thread vai ficar ouvindo na porta, todos pacotes que chegarem serão encaminhados para o array
         System.out.println("criei o ouvindo");
@@ -171,7 +205,7 @@ public class Cliente {
 
             while (base != nextSeqNum || base == c.pacotes.size() - 1) {
 
-                Pacote p = ThreadArrayCompartilhado.acessarArray(2, null);
+                Pacote p = c.ArrayDeRecebimento.acessarArray(2, null);
                 //coloca a threadd aquiiii
                 if (p == null) {
                     Thread.sleep(100);
@@ -179,7 +213,7 @@ public class Cliente {
                 if (p != null) {//se tiver ack                     
 
                     System.out.println("removi o pacote ack");
-                    if((base == (c.pacotes.size()-1)) && p.getAckNumber() > c.pacotes.get(base).getSequenceNumber()){
+                    if ((base == (c.pacotes.size() - 1)) && p.getAckNumber() > c.pacotes.get(base).getSequenceNumber()) {
                         System.out.println("ultimo pacote confirmado");
                         break;
                     }
@@ -230,7 +264,7 @@ public class Cliente {
                     }
 
                 }
-                
+
             }
             //para cancelar o envio repetitivo
             System.out.println("deu uma volta no while de fora ");
@@ -240,92 +274,53 @@ public class Cliente {
         System.out.println("terminou o envio uffa");
         timeOut.cancel();
         timeOut.purge();
-        System.exit(0);
     }
 
-    //n vou mais usar esse método , fiz na thread
-    public void EnviarPacoteDeDados(ArrayList<Pacote> d) {
-        for (int j = 0; j < d.size(); j++) {
-            byte pkt[] = converterPacoteEmByte(d.get(j));
-            DatagramPacket Dack = new DatagramPacket(pkt, pkt.length, IPAddress, portaDoServidor);
-            try {
-                clienteUDP.send(Dack);
-            } catch (IOException ex) {
-                System.out.println("erro ao tentar enviar a janela de pacotes");
-            }
+    public void handShake(Cliente c) throws IOException {
+        if (c != null) {
+            //vou começar enviando um pacote com o numero de sequencia, ack = 0, id=0 e SYN ativo
+            Pacote pacoteDeSicro = new Pacote();
+            pacoteDeSicro.setSyn(true);
+            pacoteDeSicro.setSequenceNumber(meuNumeroDeSeq++);
+            System.out.println("seq:" + pacoteDeSicro.getSequenceNumber() + " ack:" + pacoteDeSicro.getAckNumber() + " id:" + pacoteDeSicro.getConnectionID() + " syn:" + pacoteDeSicro.isSyn());
+            System.out.println("------------------------------------------->");
+            byte envio[] = converterPacoteEmByte(pacoteDeSicro);
+
+            //criar o datagram para enviar para o servidor
+            DatagramPacket pkt = new DatagramPacket(envio, envio.length, IPAddress, 5555);
+
+            c.clienteUDP.send(pkt);
+
+            ///////////////////////esperar o retorno 
+            byte dataReceive[] = new byte[tamanhoDeUmPacote];
+            DatagramPacket receive = new DatagramPacket(dataReceive, dataReceive.length);
+            c.clienteUDP.receive(receive);
+            Pacote confirmacao = converterByteParaPacote(dataReceive);
+
+            // passo o numerro da porta que irei usar para enviar o arq
+            portaDoServidor = receive.getPort();
+            id = confirmacao.getConnectionID();
+            numSeqServer = confirmacao.getSequenceNumber();
+            System.out.println("seq:" + confirmacao.getSequenceNumber() + " ack:" + confirmacao.getAckNumber() + " id:" + confirmacao.getConnectionID() + " ack:" + confirmacao.isAck() + " syn:" + confirmacao.isSyn());
+            System.out.println("<-------------------------------------------");
+
+            ////////////////////////////// envia o ack de confirmação
+            Pacote ackDeSyn = new Pacote();
+            ackDeSyn.setAck(true);
+            ackDeSyn.setSequenceNumber(meuNumeroDeSeq);
+            ackDeSyn.setAckNumber(++numSeqServer);
+            ackDeSyn.setConnectionID(id);
+
+            byte ack[] = converterPacoteEmByte(ackDeSyn);
+
+            DatagramPacket Dack = new DatagramPacket(ack, ack.length, IPAddress, portaDoServidor);
+            c.clienteUDP.send(Dack);
+
+            System.out.println("seq:" + ackDeSyn.getSequenceNumber() + " ack:" + ackDeSyn.getAckNumber() + " id:" + ackDeSyn.getConnectionID() + " ack:" + ackDeSyn.isAck());
+            System.out.println("------------------------------------------->");
+        } else {
+            System.out.println("ta null");
         }
-    }
-
-    public void handShake() throws IOException {
-        //vou começar enviando um pacote com o numero de sequencia, ack = 0, id=0 e SYN ativo
-        Pacote pacoteDeSicro = new Pacote();
-        pacoteDeSicro.setSyn(true);
-        pacoteDeSicro.setSequenceNumber(meuNumeroDeSeq++);
-        System.out.println("seq:" + pacoteDeSicro.getSequenceNumber() + " ack:" + pacoteDeSicro.getAckNumber() + " id:" + pacoteDeSicro.getConnectionID() + " syn:" + pacoteDeSicro.isSyn());
-        System.out.println("------------------------------------------->");
-        byte envio[] = converterPacoteEmByte(pacoteDeSicro);
-
-        //criar o datagram para enviar para o servidor
-        DatagramPacket pkt = new DatagramPacket(envio, envio.length, IPAddress, 5555);
-
-        clienteUDP.send(pkt);
-
-        ///////////////////////esperar o retorno 
-        byte dataReceive[] = new byte[tamanhoDeUmPacote];
-        DatagramPacket receive = new DatagramPacket(dataReceive, dataReceive.length);
-        clienteUDP.receive(receive);
-        Pacote confirmacao = converterByteParaPacote(dataReceive);
-
-        // passo o numerro da porta que irei usar para enviar o arq
-        portaDoServidor = receive.getPort();
-        id = confirmacao.getConnectionID();
-        numSeqServer = confirmacao.getSequenceNumber();
-        System.out.println("seq:" + confirmacao.getSequenceNumber() + " ack:" + confirmacao.getAckNumber() + " id:" + confirmacao.getConnectionID() + " ack:" + confirmacao.isAck() + " syn:" + confirmacao.isSyn());
-        System.out.println("<-------------------------------------------");
-
-        ////////////////////////////// envia o ack de confirmação
-        Pacote ackDeSyn = new Pacote();
-        ackDeSyn.setAck(true);
-        ackDeSyn.setSequenceNumber(meuNumeroDeSeq);
-        ackDeSyn.setAckNumber(++numSeqServer);
-        ackDeSyn.setConnectionID(id);
-
-        byte ack[] = converterPacoteEmByte(ackDeSyn);
-
-        DatagramPacket Dack = new DatagramPacket(ack, ack.length, IPAddress, portaDoServidor);
-        clienteUDP.send(Dack);
-
-        System.out.println("seq:" + ackDeSyn.getSequenceNumber() + " ack:" + ackDeSyn.getAckNumber() + " id:" + ackDeSyn.getConnectionID() + " ack:" + ackDeSyn.isAck());
-        System.out.println("------------------------------------------->");
-    }
-
-    public void CriarArquivo() {
-        //crio o arquivo na pasta 
-        File test = new File("parei pag 22.txt");
-        //crio um array para guardar os dados por completo
-        byte junto[] = new byte[pedacoDoArq.size() * 512];
-        //esse i vai contar cada pedaco de pacote 
-        int i = 0;
-        //posicao vai andar de acordo com cada byte que vai ser colocado no vetor de byte completo
-        int posicao = 0;
-
-        while (i < pedacoDoArq.size()) {
-            for (int j = 0; j < pedacoDoArq.get(i).length; j++) {
-                junto[posicao] = pedacoDoArq.get(i)[j];
-                posicao++;
-            }
-            i++;
-        }
-
-        try {
-            //chamo essa funcao da biblioteca para salvar todo arquivo
-            Files.write(test.toPath(), junto);
-            System.out.println("salvei o arquivo");
-
-        } catch (IOException ex) {
-            System.out.println("erro ao tentar criar arquivo");
-        }
-
     }
 
     public void quebrarArquivo() {
@@ -385,14 +380,6 @@ public class Cliente {
         }
 
         return null;
-    }
-
-    public static int getPortasClientes() {
-        return portasClientes;
-    }
-
-    public static void setPortasClientes(int portasClientes) {
-        Cliente.portasClientes = portasClientes;
     }
 
     public ArrayList<byte[]> getPedacoDoArq() {

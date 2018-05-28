@@ -75,27 +75,46 @@ public class ConexaoComCliente extends Thread {
             Pacote dado = EsperaPacote();
             //aqui eu terei que fazer um while que vai receber varios pacotes direto 
             //para cada pacote eu irei criar um ack 
+            if (dado.isFyn()) {
+                //responde o fyn do cliente com ack
+                Pacote ackDofyn = new Pacote(true, false, false);
+                ackDofyn.setConnectionID(id);
+                ackDofyn.setSequenceNumber(meuNumSeq);
+                EnviarPacoteCliente(ackDofyn);
 
+                //envia o fyn
+                Pacote fyn = new Pacote(false, true, false);
+                fyn.setConnectionID(id);
+                fyn.setSequenceNumber(meuNumSeq);
+                EnviarPacoteCliente(fyn);
+
+                //agora eu crio o arquivo na pasta 
+                CriarArquivo();
+                System.out.println("terminei de salvar o arquivo na pasta --xauu");
+                break;
+            }
             System.out.println("estou esperando :" + noCliente.getNumSecCliente() + "\n chegou: " + dado.getSequenceNumber());
             if (noCliente.getNumSecCliente() == dado.getSequenceNumber()) {
                 //add no arryalist os dados que vao ser convertidos
                 pedacoDoArq.add(dado.getPayload());
 
-                //atualizo qual eu vou esperar receber
-                noCliente.setNumSecCliente(noCliente.getNumSecCliente() + Cliente.tamanhoDeUmPacote);
-                
+                //atualizo qual eu vou esperar receber 
+                //faça verificação
+                if ((noCliente.getNumSecCliente() + Cliente.tamanhoDeUmPacote) > 102400) {
+                    noCliente.setNumSecCliente(0 + Cliente.tamanhoDeUmPacote);
+                } else {
+                    noCliente.setNumSecCliente(noCliente.getNumSecCliente() + Cliente.tamanhoDeUmPacote);
+                }
                 //testteeeee
-                
-               
-                p =ack = new Pacote(true, false, false);
+                p = ack = new Pacote(true, false, false);
                 ack.setSequenceNumber((meuNumSeq += Cliente.tamanhoDeUmPacote));
                 ack.setAckNumber(noCliente.getNumSecCliente());
                 EnviarPacoteCliente(p);
                 System.out.println("recebi vamos para outro");
 
-            } else if(p != null){//caso chegue outro pacotes que eu n esteja esperando eu reenvio                 
+            } else if (p != null) {//caso chegue outro pacotes que eu n esteja esperando eu reenvio                 
                 EnviarPacoteCliente(p);
-                System.out.println("enviei o ack repetido: "+p.getAckNumber());
+                System.out.println("enviei o ack repetido: " + p.getAckNumber());
             }
         }
     }
@@ -144,7 +163,6 @@ public class ConexaoComCliente extends Thread {
         meuNumSeq++;
 
         //estou usando os bits notUsed para informar a porta que ele deve mandar os pacotes de dados        
-       
         System.out.println("   seq:" + p1.getSequenceNumber() + " ack:" + p1.getAckNumber() + " id:" + p1.getConnectionID() + " syn | ack :" + p1.isSyn() + "|" + p1.isAck());
         System.out.println("------------------------------------------->");
 
@@ -210,7 +228,9 @@ public class ConexaoComCliente extends Thread {
 
     private void CriarArquivo() {
         //crio o arquivo na pasta 
-        File SalvaNoDiretorio = new File(id + ".mp4");
+        String nome = Server.caminho + "thread-" + id + "-criou esse arquivo" + ".txt";
+        System.out.println(nome);
+        File SalvaNoDiretorio = new File(nome);
         //crio um array para guardar os dados por completo
         byte junto[] = new byte[pedacoDoArq.size() * 512];
         //esse i vai contar cada pedaco de pacote 
