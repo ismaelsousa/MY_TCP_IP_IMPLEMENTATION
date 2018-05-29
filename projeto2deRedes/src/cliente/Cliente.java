@@ -37,20 +37,30 @@ import java.util.Timer;
  */
 public class Cliente {
 
+    //coisas dos pacotes
     public static int tamanhoDeUmPacote = 661;
     public ThreadArrayCompartilhado ArrayDeRecebimento = new ThreadArrayCompartilhado();
     private ArrayList<byte[]> pedacoDoArq = new ArrayList<>();
-    private ArrayList<Pacote> pacotes = new ArrayList<>();
+    public ArrayList<Pacote> pacotes = new ArrayList<>();
 
-    InetAddress IPAddress = null;
+    //coisas da janela
+    public int base = 0;
+    public int nextSeqNum = 0;
+    public int tamanho_da_janela = 1;
+    public int thress = 10000;
+
+    //coisas do construtor
+    public InetAddress IPAddress = null;
     private String hostName;
     private int porta;
     public DatagramSocket clienteUDP;
     private String caminho;
-    int id;
-    int meuNumeroDeSeq = 1;
-    int numSeqServer;
-    int portaDoServidor;
+
+    //coisas do identificador da conexao
+    public int id;
+    public int meuNumeroDeSeq = 1;
+    public int numSeqServer;
+    public int portaDoServidor;
 
     public Cliente(String hostName, int porta, String caminho) {
         this.hostName = hostName;
@@ -64,9 +74,7 @@ public class Cliente {
         }
         quebrarArquivo();
         try {
-
             this.clienteUDP = new DatagramSocket(porta);
-
         } catch (SocketException ex) {
             System.out.println("erro: não foi possivel abrir o datagramSocket no cliente na porta" + porta);
         }
@@ -75,8 +83,13 @@ public class Cliente {
     public static void main(String[] args) {
         try {
             //criando a propria instancia da classe cliente        
-            Cliente c = new Cliente("localhost", 10200, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\parei pag 22.txt");
+            Cliente c = new Cliente("localhost", 10200, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\5linguagem.pdf");
 
+            //se caso o arquivo seja maior que 100Mb eu saio do programa
+            if (c.pedacoDoArq.size() * 512 > 100000000) {
+                System.err.println("Tamanho do arquivo não suportado!\nEnviar arquivos de até 100 Mb");
+                System.exit(0);
+            }
             c.handShake(c);
             c.enviarArquivo(c);
             c.encerrarConexao(c);
@@ -138,31 +151,19 @@ public class Cliente {
             Pacote pacote = new Pacote();
             //coloca o id de conexao
             pacote.setConnectionID(c.id);
-            //coloca no pacote o numero de seq
-            //------------------------------------------------------------------------------------//
-            //--------------------                                              ------------------//
-            //--------------------  se o numero de seq for maior que 102400     ------------------//
-            //--------------------        vai para zero                         ------------------//
-            //------------------------------------------------------------------------------------//
-            if ((c.meuNumeroDeSeq + tamanhoDeUmPacote) > 102400) {
-                c.meuNumeroDeSeq = 0;
-            }
-            pacote.setSequenceNumber(c.meuNumeroDeSeq + tamanhoDeUmPacote);
-            //aqui atualiza o meu numero de seq
-            c.setMeuNumeroDeSeq(c.getMeuNumeroDeSeq() + tamanhoDeUmPacote);
+                
+                c.setMeuNumeroDeSeq(c.getMeuNumeroDeSeq() + tamanhoDeUmPacote);
+            
+            pacote.setSequenceNumber(c.meuNumeroDeSeq);
             //pega os bytes e coloca no pacote
             pacote.setPayload(c.pedacoDoArq.get(i));
-            System.out.println("coloquei o pacote com numero de seq:" + c.getMeuNumeroDeSeq() + " espero ack:" + pacote.getAckNumber());
+            System.out.println("coloquei o pacote com numero de seq:" + c.getMeuNumeroDeSeq());
             c.pacotes.add(pacote);
         }
 
         //essa thread vai ficar ouvindo na porta, todos pacotes que chegarem serão encaminhados para o array
         System.out.println("criei o ouvindo");
         OuviServidor thread = new OuviServidor(c);
-        int base = 0;
-        int nextSeqNum = 0;
-        int tamanho_da_janela = 1;
-        int thress = 10000;
         boolean primeiraVez = true;//serve para saber se já enviou o ultimo pacote
         Timer timeOut = new Timer();
         Thread_Envia_Pacote enviador;
@@ -225,7 +226,12 @@ public class Cliente {
                         if (base == c.pacotes.size() - 1) {
                             break;
                         }
-                        tamanho_da_janela++;
+
+                        //verificação para partida lenta
+                        if (tamanho_da_janela < thress) {
+                            tamanho_da_janela++;
+                        }
+
                         base++;
                     }
                     if (base == c.pacotes.size() - 1 && primeiraVez == true) {
@@ -266,6 +272,12 @@ public class Cliente {
                 }
 
             }
+
+            //verificação para saber se está maior que o limiar 
+            if (tamanho_da_janela > thress) {
+                tamanho_da_janela++;
+            }
+
             //para cancelar o envio repetitivo
             System.out.println("deu uma volta no while de fora ");
             timeOut.cancel();

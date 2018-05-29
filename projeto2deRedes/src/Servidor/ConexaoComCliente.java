@@ -32,7 +32,7 @@ public class ConexaoComCliente extends Thread {
     //vou guardar aqui todos os pedaços que me for enviado
     private ArrayList<byte[]> pedacoDoArq = new ArrayList<>();
     private NoCliente noCliente;
-    private int meuNumSeq = 1;
+    private int meuNumSeq = 4321;
     private DatagramSocket datagram;
     public static int portaUDP = 7000;
     private int id;
@@ -46,7 +46,7 @@ public class ConexaoComCliente extends Thread {
             System.out.println(portaUDP);
             this.datagram = new DatagramSocket(portaUDP);
         } catch (SocketException ex) {
-            System.out.println("erro ao tentar abri cliente nessa porta:" + portaUDP);
+            System.err.println("erro ao tentar abri cliente nessa porta:" + portaUDP);
         }
         this.noCliente = noCliente;
         //colocar o id da comunicaão aqui
@@ -93,24 +93,21 @@ public class ConexaoComCliente extends Thread {
                 System.out.println("terminei de salvar o arquivo na pasta --xauu");
                 break;
             }
-            System.out.println("estou esperando :" + noCliente.getNumSecCliente() + "\n chegou: " + dado.getSequenceNumber());
+            System.out.println( "chegou: " + dado.getSequenceNumber());
             if (noCliente.getNumSecCliente() == dado.getSequenceNumber()) {
                 //add no arryalist os dados que vao ser convertidos
                 pedacoDoArq.add(dado.getPayload());
 
-                //atualizo qual eu vou esperar receber 
-                //faça verificação
-                if ((noCliente.getNumSecCliente() + Cliente.tamanhoDeUmPacote) > 102400) {
-                    noCliente.setNumSecCliente(0 + Cliente.tamanhoDeUmPacote);
-                } else {
+                
                     noCliente.setNumSecCliente(noCliente.getNumSecCliente() + Cliente.tamanhoDeUmPacote);
-                }
+                
+
                 //testteeeee
                 p = ack = new Pacote(true, false, false);
                 ack.setSequenceNumber((meuNumSeq += Cliente.tamanhoDeUmPacote));
                 ack.setAckNumber(noCliente.getNumSecCliente());
                 EnviarPacoteCliente(p);
-                System.out.println("recebi vamos para outro");
+                System.err.println("estou esperando ---> "+noCliente.getNumSecCliente());
 
             } else if (p != null) {//caso chegue outro pacotes que eu n esteja esperando eu reenvio                 
                 EnviarPacoteCliente(p);
@@ -228,7 +225,7 @@ public class ConexaoComCliente extends Thread {
 
     private void CriarArquivo() {
         //crio o arquivo na pasta 
-        String nome = Server.caminho + "thread-" + id + "-criou esse arquivo" + ".txt";
+        String nome = Server.caminho + "thread-" + id + "-criou esse arquivo" + ".pdf";
         System.out.println(nome);
         File SalvaNoDiretorio = new File(nome);
         //crio um array para guardar os dados por completo

@@ -35,23 +35,34 @@ public class Thread_Envia_Pacote extends TimerTask {
 
     @Override
     public void run() {
-        for (int j = base; j < nextSeqNum; j++) {
-            if (j < c.getPacotes().size()) {
-                if (ciclo == true) {
-                    System.out.println("enviei:" + c.getPacotes().get(j).getSequenceNumber());
-                }
+        if (ciclo == true) {
+            for (int j = base; j < nextSeqNum; j++) {
+                if (j < c.getPacotes().size()) {
+                    if (ciclo == true) {
+                        System.out.println("enviei:" + c.getPacotes().get(j).getSequenceNumber());
+                    }
 
-                byte pkt[] = Pacote.converterPacoteEmByte(c.getPacotes().get(j));
-                DatagramPacket Dack = new DatagramPacket(pkt, pkt.length, c.IPAddress, c.portaDoServidor);
-                try {
-                    c.clienteUDP.send(Dack);
+                    byte pkt[] = Pacote.converterPacoteEmByte(c.getPacotes().get(j));
+                    DatagramPacket Dack = new DatagramPacket(pkt, pkt.length, c.IPAddress, c.portaDoServidor);
+                    try {
+                        c.clienteUDP.send(Dack);
 
-                } catch (IOException ex) {
-                    System.out.println("erro ao tentar enviar a janela de pacotes");
+                    } catch (IOException ex) {
+                        System.out.println("erro ao tentar enviar a janela de pacotes");
+                    }
                 }
             }
+            ciclo = false;
+        } else {
+            System.err.println("###############################################################################");
+            System.err.println("                                    Estorou o tempo");
+            System.err.println("###############################################################################");
+            c.thress = c.tamanho_da_janela; //thress cai pela metade da janela                        
+            c.tamanho_da_janela = 1; //a janela cai para 1
+            c.nextSeqNum = c.base; // vai ocorrer que se sendo igual a minha verificação vai criar a nova janela 
+            System.err.println("base:"+c.base);
+            System.err.println("novo next:"+c.nextSeqNum);
         }
-        ciclo = false;
     }
 
 }
