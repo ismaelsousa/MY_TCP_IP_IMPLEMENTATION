@@ -8,6 +8,7 @@ package Servidor;
 import static Servidor.Server.idDosClientes;
 import cliente.Cliente;
 import cliente.NoCliente;
+import cliente.Thread_Envia_Pacote;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -19,9 +20,11 @@ import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Timer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import pacote.Pacote;
+import pacote.Tread10secsServer;
 
 /**
  *
@@ -30,12 +33,13 @@ import pacote.Pacote;
 public class ConexaoComCliente extends Thread {
 
     //vou guardar aqui todos os pedaços que me for enviado
-    private ArrayList<byte[]> pedacoDoArq = new ArrayList<>();
-    private NoCliente noCliente;
-    private int meuNumSeq = 4321;
-    private DatagramSocket datagram;
+    public ArrayList<byte[]> pedacoDoArq = new ArrayList<>();
+    public NoCliente noCliente;
+    public int meuNumSeq = 4321;
+    public DatagramSocket datagram;
     public static int portaUDP = 7000;
-    private int id;
+    public int id;
+    boolean ciclo = true;
 
     public ConexaoComCliente(NoCliente noCliente) {
 
@@ -56,73 +60,101 @@ public class ConexaoComCliente extends Thread {
 
     @Override
     public void run() {
-
-        handShake();
-
-        //vou começar a reeber os pacotes de dados 
-        Pacote p = new Pacote(true, false, false);
-        p.setConnectionID(id);
-        p.setSequenceNumber(meuNumSeq);
-        meuNumSeq += Cliente.tamanhoDeUmPacote;
-        //mando o pacote pedindo os dados
-        p.setAckNumber(noCliente.getNumSecCliente() + Cliente.tamanhoDeUmPacote);
-        //atualizo qual eu vou esperar receber
-        noCliente.setNumSecCliente(noCliente.getNumSecCliente() + Cliente.tamanhoDeUmPacote);
-
-        EnviarPacoteCliente(p);
+        Pacote p = handShake();
+        Timer timeOut = new Timer();
+        timeOut.schedule(new Thread_Envia_Pacote_conexao(datagram, p, noCliente), 0, 500);
+        boolean verificar = true;
         Pacote ack;
-        while (true) {
+        while (ciclo) {
+            System.err.println("conexao cliente rodando ");
+            //a verificação do 10 secs está neste método esperaPacote
             Pacote dado = EsperaPacote();
+
+            if (verificar) {
+                timeOut.cancel();
+                timeOut.purge();
+                timeOut = null;
+                verificar = false;
+            }
             //aqui eu terei que fazer um while que vai receber varios pacotes direto 
             //para cada pacote eu irei criar um ack 
-            if (dado.isFyn()) {
-                //responde o fyn do cliente com ack
-                Pacote ackDofyn = new Pacote(true, false, false);
-                ackDofyn.setConnectionID(id);
-                ackDofyn.setSequenceNumber(meuNumSeq);
-                EnviarPacoteCliente(ackDofyn);
+            try {
+                if (dado.isFyn()) {
+                    //responde o fyn do cliente com ack
+                    Pacote ackDofyn = new Pacote(true, true, false);
+                    ackDofyn.setConnectionID(id);
+                    ackDofyn.setSequenceNumber(meuNumSeq);
 
-                //envia o fyn
-                Pacote fyn = new Pacote(false, true, false);
-                fyn.setConnectionID(id);
-                fyn.setSequenceNumber(meuNumSeq);
-                EnviarPacoteCliente(fyn);
+                    Timer time = new Timer();
+                    time.schedule(new Thread_Envia_Pacote_conexao(datagram, ackDofyn, noCliente), 0, 300);
 
-                //agora eu crio o arquivo na pasta 
-                CriarArquivo();
-                System.out.println("terminei de salvar o arquivo na pasta --xauu");
-                break;
-            }
-            System.out.println( "chegou: " + dado.getSequenceNumber());
-            if (noCliente.getNumSecCliente() == dado.getSequenceNumber()) {
-                //add no arryalist os dados que vao ser convertidos
-                pedacoDoArq.add(dado.getPayload());
+                    Pacote ackDoC = null;
+                    while (ackDoC == null) {
+                        ackDoC = EsperaPacote();
+                        if (ackDoC.isAck() == true) {
+                            break;
+                        } else {
+                            ackDoC = null;
+                        }
+                    }
+                    time.cancel();
+                    time.purge();
+                    //chegou ack 
+                    //agora eu crio o arquivo na pasta 
+                    CriarArquivo(1);
+                    System.out.println("terminei de salvar o arquivo na pasta --xauu");
+                    break;
+                }
+                System.out.println("chegou: " + dado.getSequenceNumber());
+                if (noCliente.getNumSecCliente() == dado.getSequenceNumber()) {
+                    //se for o numero de sequencia que eu estou esperando
 
-                
+                    //add no arryalist os dados que vao ser convertidos
+                    pedacoDoArq.add(dado.getPayload());
+
                     noCliente.setNumSecCliente(noCliente.getNumSecCliente() + Cliente.tamanhoDeUmPacote);
-                
 
-                //testteeeee
-                p = ack = new Pacote(true, false, false);
-                ack.setSequenceNumber((meuNumSeq += Cliente.tamanhoDeUmPacote));
-                ack.setAckNumber(noCliente.getNumSecCliente());
-                EnviarPacoteCliente(p);
-                System.err.println("estou esperando ---> "+noCliente.getNumSecCliente());
+                    p = ack = new Pacote(true, false, false);
+                    ack.setSequenceNumber((meuNumSeq += Cliente.tamanhoDeUmPacote));
+                    ack.setAckNumber(noCliente.getNumSecCliente());
+                    EnviarPacoteCliente(p);
+                    System.err.println("estou esperando ---> " + noCliente.getNumSecCliente());
 
-            } else if (p != null) {//caso chegue outro pacotes que eu n esteja esperando eu reenvio                 
-                EnviarPacoteCliente(p);
-                System.out.println("enviei o ack repetido: " + p.getAckNumber());
+                } else if (p != null) {//caso chegue outro pacotes que eu n esteja esperando eu reenvio                 
+
+                    EnviarPacoteCliente(p);
+                    System.out.println("enviei o ack repetido: " + p.getAckNumber());
+                }
+            } catch (Exception ex) {
+
             }
         }
+
+        try {
+            this.finalize();
+        } catch (Throwable ex) {
+            System.out.println("não finalizou ");
+        }
+
     }
 
     public Pacote EsperaPacote() {
         byte dataReceive3[] = new byte[Cliente.tamanhoDeUmPacote];
         DatagramPacket pkt3 = new DatagramPacket(dataReceive3, dataReceive3.length);
         try {
+            //inicia o tempozirador enquanto espera um pacote 
+            Timer dezSecs = new Timer();
+            dezSecs.schedule(new Tread10secsServer(this), 10000, 10000);
+            
             datagram.receive(pkt3);
+            
+            //chegou cancela 
+            dezSecs.cancel();
+            dezSecs.purge();
+            
         } catch (IOException ex) {
-            System.out.println("erro ao tentar enviar o pacote ao cliente:" + noCliente.getId());
+            System.err.println("conexao fechou com o cliente:" + noCliente.getId());
+            ciclo = false;
         }
 
         return converterByteParaPacote(dataReceive3);
@@ -134,11 +166,19 @@ public class ConexaoComCliente extends Thread {
         try {
             datagram.send(new DatagramPacket(byteDoAck, byteDoAck.length, noCliente.getIPAddress(), noCliente.getPorta()));
         } catch (IOException ex) {
+            
+            this.ciclo = false;
+            try {
+                this.finalize();
+            } catch (Throwable ex1) {
+               
+            }
             System.out.println("erro ao tentar enviar o pacote ao cliente:" + noCliente.getId());
+            System.exit(0);
         }
     }
 
-    public void handShake() {
+    public Pacote handShake() {
         ////////////pacote com o id do cliente, synAck , numero de sequencia do serve, num do ack
         Pacote p1 = new Pacote();
         //colocar o id dele
@@ -163,27 +203,44 @@ public class ConexaoComCliente extends Thread {
         System.out.println("   seq:" + p1.getSequenceNumber() + " ack:" + p1.getAckNumber() + " id:" + p1.getConnectionID() + " syn | ack :" + p1.isSyn() + "|" + p1.isAck());
         System.out.println("------------------------------------------->");
 
-        byte dataReceive2[] = converterPacoteEmByte(p1);
-        DatagramPacket pkt2 = new DatagramPacket(dataReceive2, dataReceive2.length, noCliente.getIPAddress(), noCliente.getPorta());
-        try {
-            datagram.send(pkt2);
-        } catch (IOException ex) {
-            System.out.println("erro ao tentar enviar o pacote ao cliente:" + noCliente.getId());
-        }
+        Timer timeOut = new Timer();
+        timeOut.schedule(new Thread_Envia_Pacote_conexao(datagram, p1, noCliente), 0, 500);
 
-        //////esperar o ack do cliente 
-        byte dataReceive3[] = new byte[Cliente.tamanhoDeUmPacote];
-        DatagramPacket pkt3 = new DatagramPacket(dataReceive3, dataReceive3.length);
-        try {
-            datagram.receive(pkt3);
-        } catch (IOException ex) {
-            System.out.println("erro ao tentar enviar o pacote ao cliente:" + noCliente.getId());
-        }
+        Timer dezSecs = new Timer();
+        dezSecs.schedule(new Tread10secsServer(this), 10000, 10000);
 
-        Pacote pAckC = converterByteParaPacote(dataReceive3);
-        //espero receber meu numero de sequencia no ack , estou esperando o 4322
-        System.out.println("   seq=" + pAckC.getSequenceNumber() + " ack:" + pAckC.getAckNumber() + " id:" + pAckC.getConnectionID() + " é ack:" + pAckC.isAck());
-        System.out.println("<-------------------------------------------");
+        Pacote pAckC;
+        do {
+            //////esperar o ack do cliente 
+            byte dataReceive3[] = new byte[Cliente.tamanhoDeUmPacote];
+            DatagramPacket pkt3 = new DatagramPacket(dataReceive3, dataReceive3.length);
+            try {
+                datagram.receive(pkt3);
+            } catch (IOException ex) {
+                System.out.println("erro ao tentar enviar o pacote ao cliente:" + noCliente.getId());
+            }
+
+            pAckC = converterByteParaPacote(dataReceive3);
+            //espero receber meu numero de sequencia no ack , estou esperando o 4322         
+        } while (pAckC != null && !pAckC.isAck());
+
+        dezSecs.cancel();
+        dezSecs.purge();
+
+        timeOut.cancel();
+        timeOut.purge();
+
+        //vou começar a reeber os pacotes de dados 
+        Pacote p = new Pacote(true, false, false);
+        p.setConnectionID(id);
+        p.setSequenceNumber(meuNumSeq);
+        meuNumSeq += Cliente.tamanhoDeUmPacote;
+        //mando o pacote pedindo os dados
+        p.setAckNumber(noCliente.getNumSecCliente() + Cliente.tamanhoDeUmPacote);
+        //atualizo qual eu vou esperar receber
+        noCliente.setNumSecCliente(noCliente.getNumSecCliente() + Cliente.tamanhoDeUmPacote);
+        return p;
+
     }
 
     private static byte[] converterPacoteEmByte(Pacote pkt) {
@@ -213,42 +270,52 @@ public class ConexaoComCliente extends Thread {
             return (Pacote) ous.readObject();
 
         } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+
         } catch (ClassNotFoundException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+
         }
 
         return null;
     }
 
-    private void CriarArquivo() {
-        //crio o arquivo na pasta 
-        String nome = Server.caminho + "thread-" + id + "-criou esse arquivo" + ".pdf";
-        System.out.println(nome);
-        File SalvaNoDiretorio = new File(nome);
-        //crio um array para guardar os dados por completo
-        byte junto[] = new byte[pedacoDoArq.size() * 512];
-        //esse i vai contar cada pedaco de pacote 
-        int i = 0;
-        //posicao vai andar de acordo com cada byte que vai ser colocado no vetor de byte completo
-        int posicao = 0;
-        while (i < pedacoDoArq.size()) {
-            for (int j = 0; j < pedacoDoArq.get(i).length; j++) {
-                junto[posicao] = pedacoDoArq.get(i)[j];
-                posicao++;
+    public void CriarArquivo(int op) {
+        if (op == 1) {
+            //crio o arquivo na pasta 
+            String nome = Server.caminho + "thread-" + id + "-criou esse arquivo" + ".pdf";
+            System.out.println(nome);
+            File SalvaNoDiretorio = new File(nome);
+            //crio um array para guardar os dados por completo
+            byte junto[] = new byte[pedacoDoArq.size() * 512];
+            //esse i vai contar cada pedaco de pacote 
+            int i = 0;
+            //posicao vai andar de acordo com cada byte que vai ser colocado no vetor de byte completo
+            int posicao = 0;
+            while (i < pedacoDoArq.size()) {
+                for (int j = 0; j < pedacoDoArq.get(i).length; j++) {
+                    junto[posicao] = pedacoDoArq.get(i)[j];
+                    posicao++;
+                }
+                i++;
             }
-            i++;
-        }
-        try {
-            //chamo essa funcao da biblioteca para salvar todo arquivo
-            Files.write(SalvaNoDiretorio.toPath(), junto);
-            System.out.println("salvei o arquivo");
-        } catch (IOException ex) {
-            System.out.println("erro ao tentar criar arquivo");
-        }
+            try {
+                //chamo essa funcao da biblioteca para salvar todo arquivo
+                Files.write(SalvaNoDiretorio.toPath(), junto);
+                System.out.println("salvei o arquivo");
+            } catch (IOException ex) {
+                System.out.println("erro ao tentar criar arquivo");
+            }
 
+        } else {
+            String nome = Server.caminho + "thread-" + id + "-ERRO" + ".err";
+            System.out.println(nome);
+            File SalvaNoDiretorio = new File(nome);
+            byte a[] = "err".getBytes();
+            try {
+                Files.write(SalvaNoDiretorio.toPath(), a);
+            } catch (IOException ex) {
+                Logger.getLogger(ConexaoComCliente.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
     }
 
 }

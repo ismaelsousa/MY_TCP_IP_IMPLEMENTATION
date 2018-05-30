@@ -30,7 +30,7 @@ public class Server {
     public static int idDosClientes = 0;
     public static int portaUDPs;
     public static String caminho;
-    
+
     private DatagramSocket servidorUDP;
 
     public Server(int porta, String caminho) {
@@ -45,15 +45,18 @@ public class Server {
     }
 
     public static void main(String[] args) {
+        //pronto isso tratarar quando for fechado no terminal
+        ThreadQueTrataFechamentoSo encerrou = new ThreadQueTrataFechamentoSo();
+        Runtime.getRuntime().addShutdownHook(encerrou);
         //criando a propria class
         Server server = new Server(5555, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\");
-        
+
         System.out.println("criei o servidor");
         //lista de threads 
         ArrayList<ConexaoComCliente> threads = new ArrayList();
-        
+
         byte dataReceive[] = new byte[675];
-        DatagramPacket pkt = new DatagramPacket(dataReceive, dataReceive.length);  
+        DatagramPacket pkt = new DatagramPacket(dataReceive, dataReceive.length);
         System.out.println("criei o pacote que eu vou esperar");
         try {
             while (true) {
@@ -65,13 +68,13 @@ public class Server {
                 Pacote p = converterByteParaPacote(pkt.getData());
                 System.out.println("   seq:" + p.getSequenceNumber() + " Ack:" + p.getAckNumber() + " id:" + p.getConnectionID());
                 System.out.println("<-------------------------------------------");
-                
+
                 /////////////////////se for um syn entao vamos estabelecer a conexao
                 if (p.isSyn()) {
-                  NoCliente novo = new NoCliente(++idDosClientes, pkt.getPort(), pkt.getAddress(), p.getSequenceNumber());
-                  ConexaoComCliente thread = new ConexaoComCliente(novo);                                  
+                    NoCliente novo = new NoCliente(++idDosClientes, pkt.getPort(), pkt.getAddress(), p.getSequenceNumber());
+                    ConexaoComCliente thread = new ConexaoComCliente(novo);
                 }
-                
+
             }
         } catch (IOException ex) {
             System.out.println("erro ao receber o pacote");

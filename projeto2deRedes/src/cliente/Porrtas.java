@@ -11,20 +11,38 @@ package cliente;
  */
 public class Porrtas {
 
-    public static int portasClientes = 20000;
+    private static Porrtas instancia;
+    int portasClientes = 20000;
+
+    private Porrtas() {
+
+    }
+
+    public static synchronized Porrtas getIntance() {
+        if(instancia == null){
+            instancia = new Porrtas();
+        }
+        return instancia;
+    }
     
-    public static void main(String[] args) {
-        Porrtas p = new Porrtas();
-        System.out.println("porta:"+Porrtas.portasClientes);
-        Porrtas.portasClientes++;
-        System.out.println("porta:"+Porrtas.portasClientes);
-        Porrtas.portasClientes++;
-        Porrtas p2 = new Porrtas();
-        System.out.println("porta:"+Porrtas.portasClientes);
-        Porrtas.portasClientes++;
-        System.out.println("porta:"+Porrtas.portasClientes);
-        Porrtas.portasClientes++;
-        System.out.println("porta:"+Porrtas.portasClientes);
+    
+
+    public static void main(String[] args) {       
+        System.out.println("porta:" + Porrtas.getIntance().portasClientes);
+        Porrtas.getIntance().portasClientes++;
+        
+        System.out.println("porta:" + Porrtas.getIntance().portasClientes);
+        Porrtas.getIntance().portasClientes++;
+        
+        System.out.println("porta:" + Porrtas.getIntance().portasClientes);
+        Porrtas.getIntance().portasClientes++;
+        
+        System.out.println("porta:" + Porrtas.getIntance().portasClientes);
+        Porrtas.getIntance().portasClientes++;
+        
+        System.out.println("porta:" + Porrtas.getIntance().portasClientes);
+        Porrtas.getIntance().portasClientes++;
+        
     }
 
 }
