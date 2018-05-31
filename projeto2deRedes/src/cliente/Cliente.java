@@ -4,8 +4,6 @@
  * and open the template in the editor.
  */
 package cliente;
-
-import Servidor.ThreadQueTrataFechamentoSo;
 import java.awt.Event;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
@@ -84,9 +82,9 @@ public class Cliente {
     }
 
     public static void main(String[] args) {
-        try {           
+        try {
             //criando a propria instancia da classe cliente        
-            Cliente c = new Cliente("localhost", 10201, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\Gary.pdf");
+            Cliente c = new Cliente("localhost", 10203, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\Gary.pdf");
 
             //se caso o arquivo seja maior que 100Mb eu saio do programa
             if (c.pedacoDoArq.size() * 512 > 100000000) {
@@ -124,7 +122,7 @@ public class Cliente {
         pacote.setFyn(true);
 
         Timer timeOut = new Timer();
-        timeOut.schedule(new Thread_Envia_Pacote(c, pacote, "enviei o fim"), 0, 300);
+        timeOut.schedule(new Thread_Envia_Pacote(c, pacote, "ENVIO DO FYN"), 0, 300);
 
         Pacote p = null;
         while (p == null) {
@@ -152,12 +150,15 @@ public class Cliente {
         pacote.setAck(true);
 
         timeOut = new Timer();
-        timeOut.schedule(new Thread_Envia_Pacote(c, pacote, "enviei ack do fyn"), 0, 100);
+        timeOut.schedule(new Thread_Envia_Pacote(c, pacote, "ENVIO DO ACK DO FYN"), 0, 100);
         //vou criar uma tarefa que se o fyn não chegar em 2 sec eu fecho tudo 
         //está na no ouvidor
     }
 
     public void enviarArquivo(Cliente c) throws IOException, InterruptedException {
+        System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+        System.out.println("                   ENVIANDO ARQUIVO                        ");
+        
 
         //criei os pacotess 
         for (int i = 0; i < c.pedacoDoArq.size(); i++) {//se repete até acabar todos os pacotes             
@@ -173,8 +174,7 @@ public class Cliente {
             c.pacotes.add(pacote);
         }
 
-        //essa thread vai ficar ouvindo na porta, todos pacotes que chegarem serão encaminhados para o array
-        System.out.println("criei o ouvindo");
+        //essa thread vai ficar ouvindo na porta, todos pacotes que chegarem serão encaminhados para o array    
         OuviServidor thread = new OuviServidor(c);
         boolean primeiraVez = true;//serve para saber se já enviou o ultimo pacote
 
@@ -184,27 +184,20 @@ public class Cliente {
         while (nextSeqNum < c.pacotes.size()) {
             timeOut = new Timer();
 
-            System.out.println("*********************************************************************");
-            System.out.println("                                    base:" + base);
-            System.out.println("                                    next:" + nextSeqNum);
-            System.out.println("*********************************************************************");
-
             if (base == 0) {
-                System.out.println("entrou no if de base == 0");
                 nextSeqNum++;
                 enviador = new Thread_Envia_Arquivo(base, nextSeqNum, c);
                 //envia os pacote e enicia o temporizador
                 timeOut.schedule(enviador, 0, 500);
 
-            } else if (base == c.pacotes.size() - 1) {//NO ULTIMO CASO ELE N ENVIA O ULTIMO PACOTE
-                System.out.println("entrou na base igual ao final");
+            } else if (base == c.pacotes.size() - 1) {//NO ULTIMO CASO ELE N ENVIA O ULTIMO PACOTE                
                 enviador = new Thread_Envia_Arquivo(base, nextSeqNum, c);
                 //envia os pacote e enicia o temporizador
                 timeOut = new Timer();
                 timeOut.schedule(enviador, 0, 500);
 
             } else {
-                System.out.println("aumentar o nextseqnum");
+                //AUMENTE O NEXTSEQNUM
                 int i = 0;
                 //se nextseqnum + 1 for igual ao tamanho do arraylist então n entra
                 while (i < tamanho_da_janela && (nextSeqNum + 1) < c.pacotes.size()) {
@@ -221,24 +214,23 @@ public class Cliente {
             while (base != nextSeqNum || base == c.pacotes.size() - 1) {
 
                 Pacote p = c.ArrayDeRecebimento.acessarArray(2, null);
-                                
+
                 //coloca a threadd aquiiii
                 if (p == null) {
                     Thread.sleep(40);
                 }
-                if (p != null) {//se tiver ack                     
-
-                    System.out.println("removi o pacote ack");
+                if (p != null) {//se tiver ack                                       
                     if ((base == (c.pacotes.size() - 1)) && p.getAckNumber() > c.pacotes.get(base).getSequenceNumber()) {
-                        System.out.println("ultimo pacote confirmado");
+                        //ultimo pacote confirmado PODE PARAR
                         break;
                     }
 
                     //aqui eu preciso atualizar a minha base de acordo com o ack, se for acumulativo ele vai ficar aumentando a base até o ack esperado
                     while (p.getAckNumber() > c.pacotes.get(base).getSequenceNumber() && p.getAckNumber() <= c.pacotes.get(c.pacotes.size() - 1).getSequenceNumber()) {
-                        System.out.println("ack:" + p.getAckNumber() + " > base:" + c.pacotes.get(base).getSequenceNumber());
+                        //SE O NUM DE ACK QUE CHEGOU FOR MAIOR DO QUE O QUE ESTÁ NA BASE EU AUMENTO A BASE E O ACK É MENOR QUE O DO ULTIMO PACOTE                         
                         //para cada pacote confirmado eu aumento a janela 
-                        if (base == c.pacotes.size() - 1) {
+
+                        if (base == c.pacotes.size() - 1) {//SE A BASE CHEGAR NO ULTIMO PACOTE ENTÃO IREI PARAR PARA ENVIAR ELA 
                             break;
                         }
 
@@ -249,10 +241,13 @@ public class Cliente {
 
                         base++;
                     }
+
+                    //AGORA SE A BASE ESTÁ NO ULTIMO PACOTE E É A PRIMEIRA VEZ QUE ACONTECE ENTÃO VOU ENVIAR ELA 
                     if (base == c.pacotes.size() - 1 && primeiraVez == true) {
                         primeiraVez = false;
                         timeOut.cancel();
                         timeOut.purge();
+
                         //aumentar o nextseqnum para sair do while de envio
                         nextSeqNum++;
 
@@ -261,14 +256,14 @@ public class Cliente {
                         timeOut.schedule(enviador, 0, 500);
 
                     } else if (base == nextSeqNum) {
-                        System.out.println("195 -Parei temporizador ");
-                        //para o envio repetitivo porque agora eu vou atualizar a janela
+                        //PARA O TEMPORIZADOR
+                        //porque agora eu vou atualizar a janela
                         timeOut.cancel();
                         timeOut.purge();
 
-                        System.out.println("vai cria uma nova janela");
                     } else {//se não é porque tem pacote sem ser reconhecidos ainda então preciso reenviar, então dou start para enviar esperando o 0.5 sec
-                        System.out.println("reinicia o temporizador");
+
+                        //REINICIA O TEMPORIZADOR
                         timeOut.cancel();
                         timeOut.purge();
 
@@ -283,19 +278,30 @@ public class Cliente {
             }
 
             //verificação para saber se está maior que o limiar 
+            // ||      ------------------
+            // ||    -----------------
+            // ||-------------
+            // || -
+            // ||-________________________________
             if (tamanho_da_janela >= thress) {
                 tamanho_da_janela++;
                 thress = tamanho_da_janela;
             }
-            //para cancelar o envio repetitivo
+
+            //PARA O TIMEOUT PORQUE JÁ CHEGOU TODAS AS CONFIRMAÇÕES 
             timeOut.cancel();
             timeOut.purge();
-            //limpa a lista de acks recebidos
+
+            //limpa a lista de acks recebidos PORQUE JÁ FORAM TODOS CONFIRMADOS
             c.ArrayDeRecebimento.PacoteRecebidosDoServer.clear();
         }
+
+        //PARA O TIMEOUT DO ULTIMO PACOTE ENVIADO QUANDO ELE É CONFIRMADO 
         timeOut.cancel();
         timeOut.purge();
-
+        
+        System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+        System.out.println("                   TRANSFERENCIA CONCLUIDA                 ");                
     }
 
     public void handShake(Cliente c) throws IOException {
@@ -304,24 +310,18 @@ public class Cliente {
             Pacote pacoteDeSicro = new Pacote();
             pacoteDeSicro.setSyn(true);
             pacoteDeSicro.setSequenceNumber(meuNumeroDeSeq++);
-            System.out.println("seq:" + pacoteDeSicro.getSequenceNumber() + " ack:" + pacoteDeSicro.getAckNumber() + " id:" + pacoteDeSicro.getConnectionID() + " syn:" + pacoteDeSicro.isSyn());
-            System.out.println("------------------------------------------->");
 
             //enviei na thread que vai repetir até chegar realmente 
             Timer timeOut = new Timer();
-            timeOut.schedule(new Thread_Envia_Pacote(c, pacoteDeSicro, "comecando a conexao"), 0, 500);
-
-            byte bytes[] = Pacote.converterPacoteEmByte(pacoteDeSicro);
-
-            DatagramPacket pkt = new DatagramPacket(bytes, bytes.length, c.IPAddress, c.portaDoServidor);
-            c.clienteUDP.send(pkt);
+            timeOut.schedule(new Thread_Envia_Pacote(c, pacoteDeSicro, "INICIANDO COMUNICAÇÃO"), 0, 2000);
 
             //vai esperar 10 secs por resposta
             Timer dezSecs = new Timer();
             dezSecs.schedule(new Tread10secsCliente(c), 10000, 10000);
+
             Pacote confirmacao;
             do {//enquanto não chegar a confirmação que eu quero eu repito e a thread que envia continua ligada
-                ///////////////////////esperar o retorno 
+                //esperar o retorno 
                 byte dataReceive[] = new byte[tamanhoDeUmPacote];
                 DatagramPacket receive = new DatagramPacket(dataReceive, dataReceive.length);
                 c.clienteUDP.receive(receive);
@@ -332,51 +332,46 @@ public class Cliente {
                 portaDoServidor = receive.getPort();
                 id = confirmacao.getConnectionID();
                 numSeqServer = confirmacao.getSequenceNumber();
-                System.out.println("seq:" + confirmacao.getSequenceNumber() + " ack:" + confirmacao.getAckNumber() + " id:" + confirmacao.getConnectionID() + " ack:" + confirmacao.isAck() + " syn:" + confirmacao.isSyn());
-                System.out.println("<-------------------------------------------");
             } while (confirmacao != null && confirmacao.getSequenceNumber() != 4321);
-            //ao sair eu desligo as threads 
+
+            //ao sair eu desligo OS TIMES
             dezSecs.cancel();
             dezSecs.purge();
 
             timeOut.cancel();
             timeOut.purge();
-            ////////////////////////////// envia o ack de confirmação
+
+            // envia o ack de confirmação
             Pacote ackDeSyn = new Pacote();
             ackDeSyn.setAck(true);
             ackDeSyn.setSequenceNumber(meuNumeroDeSeq);
             ackDeSyn.setAckNumber(++numSeqServer);
             ackDeSyn.setConnectionID(id);
-            System.out.println("seq:" + ackDeSyn.getSequenceNumber() + " ack:" + ackDeSyn.getAckNumber() + " id:" + ackDeSyn.getConnectionID() + " ack:" + ackDeSyn.isAck());
-            System.out.println("------------------------------------------->");
-
-            //coloco numa nova thread
+            //coloco numa novo temporizador 
             timeOut = new Timer();
-            timeOut.schedule(new Thread_Envia_Pacote(c, ackDeSyn, "ack Do syn"), 0, 500);
+            timeOut.schedule(new Thread_Envia_Pacote(c, ackDeSyn, "RESPONDENDO ACK DO SYN"), 0, 2000);
 
             //vai esperar 10 secs por resposta
             dezSecs = new Timer();
             dezSecs.schedule(new Tread10secsCliente(c), 10000, 10000);
 
             Pacote pedidoDeDados;
-            do {//espero a confirmação do server pedidindo dados
+            do {//espero a confirmação do server 
                 byte dataReceive[] = new byte[tamanhoDeUmPacote];
                 DatagramPacket receive = new DatagramPacket(dataReceive, dataReceive.length);
                 c.clienteUDP.receive(receive);
                 pedidoDeDados = converterByteParaPacote(dataReceive);
-
-                System.out.println("seq:" + pedidoDeDados.getSequenceNumber() + " ack:" + pedidoDeDados.getAckNumber() + " id:" + pedidoDeDados.getConnectionID());
-                System.out.println("<-------------------------------------------");
-
-                System.out.println("o meu numero de seq esta em;" + c.getMeuNumeroDeSeq());
-                System.out.println("o numero de seq do servidor esta em:" + c.getNumSeqServer());
             } while (pedidoDeDados == null || pedidoDeDados.getAckNumber() != meuNumeroDeSeq + Cliente.tamanhoDeUmPacote);
+
             //chegou cancelo
             dezSecs.cancel();
             dezSecs.purge();
 
             timeOut.cancel();
             timeOut.purge();
+
+            System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+            System.out.println("                   CONEXAO ESTABELCIDA            ");
         }
     }
 

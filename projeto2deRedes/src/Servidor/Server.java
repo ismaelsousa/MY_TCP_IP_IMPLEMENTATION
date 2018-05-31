@@ -39,50 +39,45 @@ public class Server {
         this.caminho = caminho;
         try {
             portaUDPs = porta;
-            System.out.println(portaUDPs);
             servidorUDP = new DatagramSocket(porta);
         } catch (SocketException ex) {
             System.out.println("Erro ao tentar criar o servidor na porta " + porta);
         }
     }
 
+    public void finalizarTudo() {
+        System.exit(0);
+    }
+
     public static void main(String[] args) {
+        //lista de threads 
         ArrayList<ConexaoComCliente> threads = new ArrayList();
-        
-        //pronto isso tratarar quando for fechado no terminal
-        ThreadQueTrataFechamentoSo encerrou = new ThreadQueTrataFechamentoSo(threads);
-        Runtime.getRuntime().addShutdownHook(encerrou);
-        try {
+        Server server = new Server(5555, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\");
+        try {//CAPTURA O BOTÃO DO TECLADO Ctrl + C
             GlobalScreen.registerNativeHook();
-            GlobalScreen.getInstance().addNativeKeyListener(new Capture());
+            GlobalScreen.getInstance().addNativeKeyListener(new Capture(server,threads));
         } catch (NativeHookException ex) {
             Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
         }
-        //criando a propria class
-        Server server = new Server(5555, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\");
-
-        System.out.println("criei o servidor");
-        //lista de threads 
-
+        
+       
         byte dataReceive[] = new byte[675];
         DatagramPacket pkt = new DatagramPacket(dataReceive, dataReceive.length);
-        System.out.println("criei o pacote que eu vou esperar");
         try {
             while (true) {
                 /////////////////////////////espera a conexao
                 System.out.println("estou esperando conexao");
                 server.servidorUDP.receive(pkt);
-                System.out.println("a porta que chegou foi:" + pkt.getPort());
-                System.out.println("chegou vou converter");
                 Pacote p = converterByteParaPacote(pkt.getData());
-                System.out.println("   seq:" + p.getSequenceNumber() + " Ack:" + p.getAckNumber() + " id:" + p.getConnectionID());
-                System.out.println("<-------------------------------------------");
 
                 /////////////////////se for um syn entao vamos estabelecer a conexao
                 if (p.isSyn()) {
+                    System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+                    System.out.println("                   CLIENTE REQUISITANDO CONEXAO         ");
                     NoCliente novo = new NoCliente(++idDosClientes, pkt.getPort(), pkt.getAddress(), p.getSequenceNumber());
                     ConexaoComCliente thread = new ConexaoComCliente(novo);
                     threads.add(thread);
+
                 }
 
             }

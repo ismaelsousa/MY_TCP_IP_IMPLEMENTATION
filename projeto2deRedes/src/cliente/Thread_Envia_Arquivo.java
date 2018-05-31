@@ -28,8 +28,7 @@ public class Thread_Envia_Arquivo extends TimerTask {
         this.c = c;
         //por que fiz novo, para não passar a refencia e sim criar um novo 
         this.base = new Integer(base);
-        this.nextSeqNum = new Integer(nextSeqNum);
-        System.out.println("tarefa criada");
+        this.nextSeqNum = new Integer(nextSeqNum);      
 
     }
 
@@ -37,10 +36,7 @@ public class Thread_Envia_Arquivo extends TimerTask {
     public void run() {
         if (ciclo == true) {
             for (int j = base; j < nextSeqNum; j++) {
-                if (j < c.getPacotes().size()) {
-                    if (ciclo == true) {
-                        System.out.println("enviei:" + c.getPacotes().get(j).getSequenceNumber());
-                    }
+                if (j < c.getPacotes().size()) {                    
 
                     byte pkt[] = Pacote.converterPacoteEmByte(c.getPacotes().get(j));
                     DatagramPacket Dack = new DatagramPacket(pkt, pkt.length, c.IPAddress, c.portaDoServidor);
@@ -51,17 +47,14 @@ public class Thread_Envia_Arquivo extends TimerTask {
                         System.out.println("erro ao tentar enviar a janela de pacotes");
                     }
                 }
-            }
-            ciclo = false;
+            }            
         } else {
             System.err.println("###############################################################################");
-            System.err.println("                                    Estorou o tempo");
-            System.err.println("###############################################################################");
+            System.err.println("                                    Estorou o tempo");            
             c.thress = c.tamanho_da_janela; //thress cai pela metade da janela                        
             c.tamanho_da_janela = 1; //a janela cai para 1
             c.nextSeqNum = c.base; // vai ocorrer que se sendo igual a minha verificação vai criar a nova janela 
-            System.err.println("base:"+c.base);
-            System.err.println("novo next:"+c.nextSeqNum);
+            
             try {
                 this.finalize();
             } catch (Throwable ex) {

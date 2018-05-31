@@ -21,6 +21,7 @@ public class Thread_Envia_Pacote extends TimerTask {
     Cliente c;
     Pacote envio;
     private final String m;
+    boolean umaVez = true;
 
     public Thread_Envia_Pacote(Cliente c, Pacote envio, String m) {
         this.c = c;
@@ -35,14 +36,12 @@ public class Thread_Envia_Pacote extends TimerTask {
         DatagramPacket pkt = new DatagramPacket(bytes, bytes.length, c.IPAddress, c.portaDoServidor);
         try {
             c.clienteUDP.send(pkt);
-            System.err.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
-            System.err.println("%%                                                     %%");
-            System.err.println("%%                                                     %%");
-            System.err.println("                   "+m);
-            System.err.println("%%                                                     %%");
-            System.err.println("%%                                                     %%");
-            System.err.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
-            
+            if (umaVez) {
+                System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+                System.out.println("                   " + m + "                        ");
+                
+                umaVez = false;
+            }
         } catch (IOException ex) {
             System.err.println("Erro ao enviar o pac na Thread_Envia_Pacote");
         }

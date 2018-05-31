@@ -5,7 +5,7 @@
  */
 package cliente;
 
-import Servidor.ThreadQueTrataFechamentoSo;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -70,9 +70,10 @@ public class OuviServidor extends Thread {
                         acksRepetidos++;
                         if (acksRepetidos >= 3) {
                             System.err.println("###############################################################################");
-                            System.err.println("                                    Acks repetidos");
+                            System.err.println("                                   3 Acks repetidos");
                             System.err.println("###############################################################################");
-                            c.thress = c.tamanho_da_janela; //thress cai pela metade da janela                        
+                            
+                            c.thress = c.tamanho_da_janela; //thress cai para janela                        
                             c.tamanho_da_janela = 1; //a janela cai para 1
                             c.nextSeqNum = new Integer(c.base); // vai ocorrer que se sendo igual a minha verificação vai criar a nova janela                             
                             acksRepetidos = 0; //zera para começar a verificar novamene
@@ -80,7 +81,7 @@ public class OuviServidor extends Thread {
                     }
                 } else if (p.isFyn() && p.isAck()) {
                     c.ArrayDeRecebimento.acessarArray(1, p);
-                }else if(p.isFyn()){
+                }else if(p.isFyn()){//se receber do nada um fim sem ter sido enviado todo arquivo então foi algum problema que o servidor desligou
                     System.out.println("Servidor se desligou");
                     c.finalizarTudo();
                 }

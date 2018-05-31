@@ -46,8 +46,7 @@ public class ConexaoComCliente extends Thread {
         //atualiza para cada novo cliente
         portaUDP++;
 
-        try {
-            System.out.println(portaUDP);
+        try {            
             this.datagram = new DatagramSocket(portaUDP);
         } catch (SocketException ex) {
             System.err.println("erro ao tentar abri cliente nessa porta:" + portaUDP);
@@ -66,7 +65,6 @@ public class ConexaoComCliente extends Thread {
         boolean verificar = true;
         Pacote ack;
         while (ciclo) {
-            System.err.println("conexao cliente rodando ");
             //a verificação do 10 secs está neste método esperaPacote
             Pacote dado = EsperaPacote();
 
@@ -102,10 +100,10 @@ public class ConexaoComCliente extends Thread {
                     //chegou ack 
                     //agora eu crio o arquivo na pasta 
                     CriarArquivo(1);
-                    System.out.println("terminei de salvar o arquivo na pasta --xauu");
+                    System.out.println("arquivo salvo na pasta");
                     break;
                 }
-                System.out.println("chegou: " + dado.getSequenceNumber());
+                
                 if (noCliente.getNumSecCliente() == dado.getSequenceNumber()) {
                     //se for o numero de sequencia que eu estou esperando
 
@@ -117,13 +115,10 @@ public class ConexaoComCliente extends Thread {
                     p = ack = new Pacote(true, false, false);
                     ack.setSequenceNumber((meuNumSeq += Cliente.tamanhoDeUmPacote));
                     ack.setAckNumber(noCliente.getNumSecCliente());
-                    EnviarPacoteCliente(p);
-                    System.err.println("estou esperando ---> " + noCliente.getNumSecCliente());
+                    EnviarPacoteCliente(p);         
 
                 } else if (p != null) {//caso chegue outro pacotes que eu n esteja esperando eu reenvio                 
-
-                    EnviarPacoteCliente(p);
-                    System.out.println("enviei o ack repetido: " + p.getAckNumber());
+                    EnviarPacoteCliente(p);                    
                 }
             } catch (Exception ex) {
 
@@ -132,8 +127,7 @@ public class ConexaoComCliente extends Thread {
 
         try {
             this.finalize();
-        } catch (Throwable ex) {
-            System.out.println("não finalizou ");
+        } catch (Throwable ex) {            
         }
 
     }
@@ -172,8 +166,7 @@ public class ConexaoComCliente extends Thread {
                 this.finalize();
             } catch (Throwable ex1) {
                
-            }
-            System.out.println("erro ao tentar enviar o pacote ao cliente:" + noCliente.getId());
+            }            
             System.exit(0);
         }
     }
@@ -198,11 +191,7 @@ public class ConexaoComCliente extends Thread {
 
         //vai para 4322
         meuNumSeq++;
-
-        //estou usando os bits notUsed para informar a porta que ele deve mandar os pacotes de dados        
-        System.out.println("   seq:" + p1.getSequenceNumber() + " ack:" + p1.getAckNumber() + " id:" + p1.getConnectionID() + " syn | ack :" + p1.isSyn() + "|" + p1.isAck());
-        System.out.println("------------------------------------------->");
-
+       
         Timer timeOut = new Timer();
         timeOut.schedule(new Thread_Envia_Pacote_conexao(datagram, p1, noCliente), 0, 500);
 
@@ -217,7 +206,7 @@ public class ConexaoComCliente extends Thread {
             try {
                 datagram.receive(pkt3);
             } catch (IOException ex) {
-                System.out.println("erro ao tentar enviar o pacote ao cliente:" + noCliente.getId());
+                
             }
 
             pAckC = converterByteParaPacote(dataReceive3);
@@ -299,8 +288,7 @@ public class ConexaoComCliente extends Thread {
             }
             try {
                 //chamo essa funcao da biblioteca para salvar todo arquivo
-                Files.write(SalvaNoDiretorio.toPath(), junto);
-                System.out.println("salvei o arquivo");
+                Files.write(SalvaNoDiretorio.toPath(), junto);                
             } catch (IOException ex) {
                 System.out.println("erro ao tentar criar arquivo");
             }
@@ -313,7 +301,7 @@ public class ConexaoComCliente extends Thread {
             try {
                 Files.write(SalvaNoDiretorio.toPath(), a);
             } catch (IOException ex) {
-                Logger.getLogger(ConexaoComCliente.class.getName()).log(Level.SEVERE, null, ex);
+                
             }
         }
     }
