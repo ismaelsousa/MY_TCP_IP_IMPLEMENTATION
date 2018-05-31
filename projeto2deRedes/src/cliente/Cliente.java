@@ -84,10 +84,7 @@ public class Cliente {
     }
 
     public static void main(String[] args) {
-        try {
-
-            Runtime.getRuntime().addShutdownHook(new ThreadQueTrataFechamentoSo());
-
+        try {           
             //criando a propria instancia da classe cliente        
             Cliente c = new Cliente("localhost", 10201, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\Gary.pdf");
 
@@ -224,6 +221,7 @@ public class Cliente {
             while (base != nextSeqNum || base == c.pacotes.size() - 1) {
 
                 Pacote p = c.ArrayDeRecebimento.acessarArray(2, null);
+                                
                 //coloca a threadd aquiiii
                 if (p == null) {
                     Thread.sleep(40);

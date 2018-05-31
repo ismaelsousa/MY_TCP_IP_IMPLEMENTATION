@@ -78,8 +78,11 @@ public class OuviServidor extends Thread {
                             acksRepetidos = 0; //zera para começar a verificar novamene
                         }
                     }
-                } else if (p.isFyn() == true || p.isAck() == true) {
+                } else if (p.isFyn() && p.isAck()) {
                     c.ArrayDeRecebimento.acessarArray(1, p);
+                }else if(p.isFyn()){
+                    System.out.println("Servidor se desligou");
+                    c.finalizarTudo();
                 }
 
                 //se for um ack entao vou olhar o array list para ver se bate com algum 
@@ -87,11 +90,7 @@ public class OuviServidor extends Thread {
             } catch (IOException ex) {
                 System.out.println("erro ao tentar receber pacote na thread");
             }catch (Throwable ex) {
-
             }
-
         }
-
     }
-
 }

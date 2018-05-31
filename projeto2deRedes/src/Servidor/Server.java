@@ -19,6 +19,8 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.jnativehook.GlobalScreen;
+import org.jnativehook.NativeHookException;
 import pacote.Pacote;
 
 /**
@@ -45,15 +47,22 @@ public class Server {
     }
 
     public static void main(String[] args) {
+        ArrayList<ConexaoComCliente> threads = new ArrayList();
+        
         //pronto isso tratarar quando for fechado no terminal
-        ThreadQueTrataFechamentoSo encerrou = new ThreadQueTrataFechamentoSo();
+        ThreadQueTrataFechamentoSo encerrou = new ThreadQueTrataFechamentoSo(threads);
         Runtime.getRuntime().addShutdownHook(encerrou);
+        try {
+            GlobalScreen.registerNativeHook();
+            GlobalScreen.getInstance().addNativeKeyListener(new Capture());
+        } catch (NativeHookException ex) {
+            Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
+        }
         //criando a propria class
         Server server = new Server(5555, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\");
 
         System.out.println("criei o servidor");
         //lista de threads 
-        ArrayList<ConexaoComCliente> threads = new ArrayList();
 
         byte dataReceive[] = new byte[675];
         DatagramPacket pkt = new DatagramPacket(dataReceive, dataReceive.length);
@@ -73,6 +82,7 @@ public class Server {
                 if (p.isSyn()) {
                     NoCliente novo = new NoCliente(++idDosClientes, pkt.getPort(), pkt.getAddress(), p.getSequenceNumber());
                     ConexaoComCliente thread = new ConexaoComCliente(novo);
+                    threads.add(thread);
                 }
 
             }
