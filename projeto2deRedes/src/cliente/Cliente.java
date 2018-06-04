@@ -84,7 +84,7 @@ public class Cliente {
     public static void main(String[] args) {
         try {
             //criando a propria instancia da classe cliente        
-            Cliente c = new Cliente("localhost", 10203, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\Gary.pdf");
+            Cliente c = new Cliente("localhost", 10203, "C:\\Users\\ismae\\Google Drive\\ufc\\4 semestre\\redes\\projeto1.pdf");
 
             //se caso o arquivo seja maior que 100Mb eu saio do programa
             if (c.pedacoDoArq.size() * 512 > 100000000) {
@@ -294,6 +294,8 @@ public class Cliente {
 
             //limpa a lista de acks recebidos PORQUE JÁ FORAM TODOS CONFIRMADOS
             c.ArrayDeRecebimento.PacoteRecebidosDoServer.clear();
+            
+            System.out.println("ENVIADO:"+((base*100)/c.pacotes.size())+"%...");
         }
 
         //PARA O TIMEOUT DO ULTIMO PACOTE ENVIADO QUANDO ELE É CONFIRMADO 
